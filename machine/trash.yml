@@ -1,0 +1,3 @@
+import:
+ - package: github.com/docker/machine
+   version: 1eaf5a464f44066e57628218995c8b7d80c825cd
