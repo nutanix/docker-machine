@@ -32,8 +32,8 @@ type NutanixDriver struct {
 	VMVCPUs  int
 	VMCores  int
 	SSHPass  string
-	VLANs    []string
-	Images   []string
+	VLAN     string
+	Image    string
 	VMId     string
 }
 
@@ -68,37 +68,36 @@ func (d *NutanixDriver) Create() error {
 		log.Errorf("Error getting networks: [%v]", err)
 		return err
 	}
-	for _, vLAN := range d.VLANs {
-		for _, net := range networks.Entities {
-			if net.Name == vLAN {
-				n := &mgmt.VMNicSpecDTO{
-					NetworkUUID: net.UUID,
-				}
-				vmConfig.VMNics = append(vmConfig.VMNics, n)
-				break
+
+	for _, net := range networks.Entities {
+		if net.Name == d.VLAN {
+			n := &mgmt.VMNicSpecDTO{
+				NetworkUUID: net.UUID,
 			}
+			vmConfig.VMNics = append(vmConfig.VMNics, n)
+			break
 		}
 	}
-
+	
 	images, err := c.GetImageList()
 	if err != nil {
 		log.Errorf("Error getting images: [%v]", err)
 		return err
 	}
 
-	for _, image := range d.Images {
-		for _, img := range images.Entities {
-			if img.Name == image {
-				d := &mgmt.VMDiskDTO{
-					VMDiskClone: &mgmt.VMDiskSpecCloneDTO{
-						VMDiskUUID: img.VMDiskID,
-					},
-				}
-				vmConfig.VMDisks = append(vmConfig.VMDisks, d)
-				break
+
+	for _, img := range images.Entities {
+		if img.Name == d.Image {
+			d := &mgmt.VMDiskDTO{
+				VMDiskClone: &mgmt.VMDiskSpecCloneDTO{
+					VMDiskUUID: img.VMDiskID,
+				},
 			}
+			vmConfig.VMDisks = append(vmConfig.VMDisks, d)
+			break
 		}
 	}
+	
 
 	err = ssh.GenerateSSHKey(d.GetSSHKeyPath())
 	if err != nil {
@@ -123,7 +122,7 @@ func (d *NutanixDriver) Create() error {
 	vmId := uuid
 	for i := 0; i < 1200; i++ {
 		vmDTO, err := r.GetVMInfo(uuid)
-		if err != nil || len(vmDTO.NutanixVirtualDisks) < (len(d.Images)+1) {
+		if err != nil || len(vmDTO.NutanixVirtualDisks) < (2) {
 			<-time.After(1 * time.Second)
 			continue
 		}
@@ -227,13 +226,15 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Number of cores per VCPU of the VM to be created",
 			Value:  defaultCores,
 		},
-		mcnflag.StringSliceFlag{
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_VM_NETWORK",
 			Name:  "nutanix-vm-network",
 			Usage: "The name of the network to attach to the newly created VM",
 		},
-		mcnflag.StringSliceFlag{
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_VM_IMAGE",
 			Name:  "nutanix-vm-image",
-			Usage: "The name of the VM disks to clone from, for the newly created VM",
+			Usage: "The name of the VM disk to clone from, for the newly created VM",
 		},
 	}
 }
@@ -309,13 +310,13 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.VMMem = opts.Int("nutanix-vm-mem")
 	d.VMVCPUs = opts.Int("nutanix-vm-cpus")
 	d.VMCores = opts.Int("nutanix-vm-cores")
-	d.VLANs = opts.StringSlice("nutanix-vm-network")
-	d.Images = opts.StringSlice("nutanix-vm-image")
-	if len(d.Images) == 0 {
-		return fmt.Errorf("Please specify at least one disk")
+	d.VLAN = opts.String("nutanix-vm-network")
+	if d.VLAN == "" {
+		return fmt.Errorf("nutanix-vm-network cannot be empty")
 	}
-	if len(d.VLANs) == 0 {
-		return fmt.Errorf("Please specify at least one network")
+	d.Image = opts.String("nutanix-vm-image")
+	if d.Image == "" {
+		return fmt.Errorf("nutanix-vm-image cannot be empty")
 	}
 	return nil
 }
