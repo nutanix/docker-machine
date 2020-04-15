@@ -1,5 +1,5 @@
 # .goreleaser.yml
-project_name: docker-machine-nutanix
+project_name: docker-machine-driver-nutanix
 
 builds:
   - goos:
@@ -8,7 +8,8 @@ builds:
       - amd64
 
 archives:
-  - name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}"
+    format: binary
 
 checksum:
   name_template: "{{ .ProjectName }}_v{{ .Version }}_checksums.txt"
