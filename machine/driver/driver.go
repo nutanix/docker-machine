@@ -73,7 +73,7 @@ func (d *NutanixDriver) Create() error {
 
 	v3Client, err := v3.NewV3Client(configCreds)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	uuid := gouuid.New().String()
