@@ -81,6 +81,8 @@ func (d *NutanixDriver) Create() error {
 		return err
 	}
 
+	log.Infof("Cluster list: %s", resp)
+
 	uuid := gouuid.New().String()
 
 	vmConfig := &mgmt.VMCreateDTO{
