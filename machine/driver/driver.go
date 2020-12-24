@@ -31,7 +31,7 @@ type NutanixDriver struct {
 	Endpoint    string
 	Username    string
 	Password    string
-	Port        int
+	Port        string
 	Insecure    bool
 	Cluster     string
 	VMVCPUs     int
