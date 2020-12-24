@@ -28,17 +28,21 @@ const (
 
 type NutanixDriver struct {
 	*drivers.BaseDriver
-	Username string
-	Password string
-	Endpoint string
-	Cluster  string
-	VMVCPUs  int
-	VMCores  int
-	VMMem    int
-	SSHPass  string
-	VLAN     string
-	Image    string
-	VMId     string
+	Endpoint    string
+	Username    string
+	Password    string
+	Port        int
+	Insecure    bool
+	Cluster     string
+	VMVCPUs     int
+	VMCores     int
+	VMMem       int
+	SSHPass     string
+	VLAN        string
+	Image       string
+	VMId        string
+	SessionAuth bool
+	ProxyURL    string
 }
 
 func NewDriver(hostname, storePath string) *NutanixDriver {
@@ -54,7 +58,7 @@ func (d *NutanixDriver) Create() error {
 	name := d.GetMachineName()
 
 	configCreds := client.Credentials{
-		URL:         fmt.Sprintf("%s:%s", c.Endpoint, c.Port),
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
 		Endpoint:    d.Endpoint,
 		Username:    d.Username,
 		Password:    d.Password,
@@ -66,6 +70,7 @@ func (d *NutanixDriver) Create() error {
 
 	c := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
 	r := rest.NewNutanixRESTClient(d.Endpoint, d.Username, d.Password)
+
 	v3Client, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return nil, err
