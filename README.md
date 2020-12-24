@@ -8,3 +8,4 @@ This repository contains a modified docker machine driver to support Rancher 2 n
 * /client - contains Go bindings to the Nutanix API used by the Nutanix Docker machine driver.
 
 
+Prism Central wip support
