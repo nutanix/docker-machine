@@ -76,6 +76,11 @@ func (d *NutanixDriver) Create() error {
 		return err
 	}
 
+	resp, err := v3Client.ListAllCluster("")
+	if err != nil {
+		return err
+	}
+
 	uuid := gouuid.New().String()
 
 	vmConfig := &mgmt.VMCreateDTO{
