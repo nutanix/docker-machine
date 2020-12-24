@@ -71,12 +71,12 @@ func (d *NutanixDriver) Create() error {
 	c := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
 	r := rest.NewNutanixRESTClient(d.Endpoint, d.Username, d.Password)
 
-	v3Client, err := v3.NewV3Client(configCreds)
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
 
-	resp, err := v3Client.ListAllCluster("")
+	resp, err := conn.V3.ListAllCluster("")
 	if err != nil {
 		return err
 	}
