@@ -15,6 +15,9 @@ import (
 	"github.com/docker/machine/libmachine/state"
 	gouuid "github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/terraform-providers/terraform-provider-nutanix/client"
+	v3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
 )
 
 const (
@@ -28,9 +31,10 @@ type NutanixDriver struct {
 	Username string
 	Password string
 	Endpoint string
-	VMMem    int
+	Cluster  string
 	VMVCPUs  int
 	VMCores  int
+	VMMem    int
 	SSHPass  string
 	VLAN     string
 	Image    string
@@ -48,8 +52,24 @@ func NewDriver(hostname, storePath string) *NutanixDriver {
 
 func (d *NutanixDriver) Create() error {
 	name := d.GetMachineName()
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", c.Endpoint, c.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
 	c := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
 	r := rest.NewNutanixRESTClient(d.Endpoint, d.Username, d.Password)
+	v3Client, err := v3.NewV3Client(configCreds)
+	if err != nil {
+		return nil, err
+	}
 
 	uuid := gouuid.New().String()
 
@@ -78,13 +98,12 @@ func (d *NutanixDriver) Create() error {
 			break
 		}
 	}
-	
+
 	images, err := c.GetImageList()
 	if err != nil {
 		log.Errorf("Error getting images: [%v]", err)
 		return err
 	}
-
 
 	for _, img := range images.Entities {
 		if img.Name == d.Image {
@@ -97,7 +116,6 @@ func (d *NutanixDriver) Create() error {
 			break
 		}
 	}
-	
 
 	err = ssh.GenerateSSHKey(d.GetSSHKeyPath())
 	if err != nil {
@@ -228,13 +246,13 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_NETWORK",
-			Name:  "nutanix-vm-network",
-			Usage: "The name of the network to attach to the newly created VM",
+			Name:   "nutanix-vm-network",
+			Usage:  "The name of the network to attach to the newly created VM",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_IMAGE",
-			Name:  "nutanix-vm-image",
-			Usage: "The name of the VM disk to clone from, for the newly created VM",
+			Name:   "nutanix-vm-image",
+			Usage:  "The name of the VM disk to clone from, for the newly created VM",
 		},
 	}
 }
