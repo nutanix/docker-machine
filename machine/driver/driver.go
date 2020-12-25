@@ -71,17 +71,27 @@ func (d *NutanixDriver) Create() error {
 	c := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
 	r := rest.NewNutanixRESTClient(d.Endpoint, d.Username, d.Password)
 
+	log.Infof("Connecting on: %s", configCreds.URL)
+
 	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
 
-	resp, err := conn.V3.ListAllCluster("")
+	clusters, err := conn.V3.ListAllCluster("")
 	if err != nil {
+		log.Errorf("Error getting clusters: [%v]", err)
 		return err
 	}
 
-	log.Infof("Cluster list: %s", resp)
+	log.Infof("Cluster list: %s", clusters)
+
+	for _, cluster := range clusters.Entities {
+		
+		log.Infof("Entity name: %s", *cluster.Status.Name)
+		
+	
+	}
 
 	uuid := gouuid.New().String()
 
@@ -103,12 +113,18 @@ func (d *NutanixDriver) Create() error {
 
 	for _, net := range networks.Entities {
 		if net.Name == d.VLAN {
+			
 			n := &mgmt.VMNicSpecDTO{
 				NetworkUUID: net.UUID,
 			}
 			vmConfig.VMNics = append(vmConfig.VMNics, n)
 			break
 		}
+	}
+
+	if len(vmConfig.VMNics) < 1 {
+		log.Errorf("Network %s not found", d.VLAN)
+		return fmt.Errorf("Network %s not found", d.VLAN)
 	}
 
 	images, err := c.GetImageList()
@@ -127,6 +143,11 @@ func (d *NutanixDriver) Create() error {
 			vmConfig.VMDisks = append(vmConfig.VMDisks, d)
 			break
 		}
+	}
+
+	if len(vmConfig.VMDisks) < 1 {
+		log.Errorf("Image %s not found", d.Image)
+		return fmt.Errorf("Image %s not found", d.Image)
 	}
 
 	err = ssh.GenerateSSHKey(d.GetSSHKeyPath())
@@ -238,6 +259,17 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "nutanix-endpoint",
 			Usage:  "Nutanix management endpoint ip address/FQDN",
 		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_PORT",
+			Name:   "nutanix-port",
+			Usage:  "Nutanix management endpoint port (default: 9440)",
+			Value:  "9440",
+		},
+		mcnflag.BoolFlag{
+			EnvVar: "NUTANIX_INSECURE",
+			Name:   "nutanix-insecure",
+			Usage:  "Explicitly allow the provider to perform \"insecure\" SSL requests",
+		},
 		mcnflag.IntFlag{
 			EnvVar: "NUTANIX_VM_MEM",
 			Name:   "nutanix-vm-mem",
@@ -337,6 +369,10 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	if d.Endpoint == "" {
 		return fmt.Errorf("nutanix-endpoint cannot be empty")
 	}
+	d.Port = opts.String("nutanix-port")
+
+	d.Insecure = opts.Bool("nutanix-insecure")
+
 	d.VMMem = opts.Int("nutanix-vm-mem")
 	d.VMVCPUs = opts.Int("nutanix-vm-cpus")
 	d.VMCores = opts.Int("nutanix-vm-cores")
