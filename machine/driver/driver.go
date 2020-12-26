@@ -124,8 +124,8 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	if len(res.NicList) < 1 {
-		log.Errorf("Network %s not found", d.Subnet)
-		return fmt.Errorf("Network %s not found", d.Subnet)
+		log.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
+		return fmt.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
 	}
 
 
