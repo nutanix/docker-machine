@@ -2,9 +2,9 @@
 
 ![Integration](https://github.com/nutanix/docker-machine/workflows/Integration/badge.svg)
 
-This repository contains a modified docker machine driver to support Rancher 2 node driver.
+This repository contains Nutanix docker machine driver 
 
-* /machine - contains the source code for the Nutanix Docker machine driver
-* /client - contains Go bindings to the Nutanix API used by the Nutanix Docker machine driver.
-
+* v1 is the original Nutanix docker machine driver that connect to Prism Element
+* v2.x add Rancher 2.0 support
+* v3.x is the latest branch version that connect to Prism Central
 
