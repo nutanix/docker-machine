@@ -4,7 +4,7 @@
 
 This repository contains Nutanix docker machine driver 
 
-* v1 is the original Nutanix docker machine driver who work with Prism Element
+* v1 is the original Nutanix docker machine driver that connect to Prism Element
 * v2.x add Rancher 2.0 support
-* v3.x is the latest branch version who work directly with Prism Central
+* v3.x is the latest branch version that connect to Prism Central
 
