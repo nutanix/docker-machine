@@ -86,7 +86,8 @@ func (d *NutanixDriver) Create() error {
 	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
 
 	// Search target cluster 
-	clusters, err := conn.V3.ListAllCluster("")
+	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
+	clusters, err := conn.V3.ListAllCluster(clusterFilter)
 	if err != nil {
 		log.Errorf("Error getting clusters: [%v]", err)
 		return err
@@ -102,14 +103,15 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search target subnet
-	subnets, err := conn.V3.ListAllSubnet("")
+	subnetFilter := fmt.Sprintf("name==%s", d.Subnet)
+	subnets, err := conn.V3.ListAllSubnet(subnetFilter)
 	if err != nil {
 		log.Errorf("Error getting subnets: [%v]", err)
 		return err
 	}
 
 	for _, subnet := range subnets.Entities {
-		if *subnet.Status.Name == d.Subnet {
+		if *subnet.Status.Name == d.Subnet && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
 			
 			n := &v3.VMNic{
 				SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
@@ -128,7 +130,8 @@ func (d *NutanixDriver) Create() error {
 
 
 	// Search image template
-	images, err := conn.V3.ListAllImage("")
+	imageFilter := fmt.Sprintf("name==%s", d.Image)
+	images, err := conn.V3.ListAllImage(imageFilter)
 	if err != nil {
 		log.Errorf("Error getting images: [%v]", err)
 		return err
