@@ -7,16 +7,12 @@ import (
 	"time"
 	"encoding/base64"
 
-	"nutanix/client/api/mgmt"
-	// "nutanix/client/api/rest"
-
 	"nutanix/utils"
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
-	// gouuid "github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/terraform-providers/terraform-provider-nutanix/client"
@@ -206,6 +202,7 @@ func (d *NutanixDriver) Create() error {
 
 	log.Infof("waiting for vm (%s) to create: %s", uuid, taskUUID)
 
+	// Wait for the VM to be available
 	for i := 0; i < 1200; i++ {
 		vmIntent, err := conn.V3.GetVM(uuid)
 		if err != nil || len(vmIntent.Spec.Resources.DiskList) < (2) {
@@ -344,38 +341,80 @@ func (d *NutanixDriver) GetURL() (string, error) {
 }
 
 func (d *NutanixDriver) GetState() (state.State, error) {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	vmInfoDTO, err := m.GetVMInfo(d.VMId)
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return state.Error, err
 	}
-	switch vmInfoDTO.State {
-	case "on":
+	
+	resp, err := conn.V3.GetVM(d.VMId)
+	if err != nil {
+		return state.Error, err
+	}
+	switch *resp.Status.Resources.PowerState {
+	case "ON":
 		return state.Running, nil
-	case "off":
+	case "OFF":
 		return state.Stopped, nil
 	}
 	return state.None, nil
 }
 
 func (d *NutanixDriver) Kill() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.PowerOff(d.VMId)
-	if err != nil {
-		return err
-	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+	return d.Stop()
 }
 
 func (d *NutanixDriver) Remove() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.DeleteVM(d.VMId)
+	name := d.GetMachineName()
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+	resp, err := conn.V3.DeleteVM(d.VMId)
+	if err != nil {
+		return err
+	}
+
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	// Wait for the VM to be deleted
+	for i := 0; i < 1200; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil || *resp.Status != "SUCCEEDED" {
+			<-time.After(1 * time.Second)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("unable to delete VM %s", name)
+	
 }
 
 func (d *NutanixDriver) Restart() error {
@@ -423,22 +462,104 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 }
 
 func (d *NutanixDriver) Start() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.PowerOn(d.VMId)
+	name := d.GetMachineName()
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+
+	vmResp, err := conn.V3.GetVM(d.VMId)
+	if err != nil {
+		return err
+	}
+
+	// Prepare VM update request
+	request := &v3.VMIntentInput{}
+	request.Spec = vmResp.Spec
+	request.Metadata = vmResp.Metadata
+	request.Spec.Resources.PowerState = utils.StringPtr("ON")
+	
+	resp, err := conn.V3.UpdateVM(d.VMId, request)
+	if err != nil {
+		return err
+	}
+
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	// Wait for the VM to be deleted
+	for i := 0; i < 1200; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil || *resp.Status != "SUCCEEDED" {
+			<-time.After(1 * time.Second)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("unable to Start VM %s", name)
 }
 
 func (d *NutanixDriver) Stop() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.PowerOff(d.VMId)
+	name := d.GetMachineName()
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+
+	vmResp, err := conn.V3.GetVM(d.VMId)
+	if err != nil {
+		return err
+	}
+
+	// Prepare VM update request
+	request := &v3.VMIntentInput{}
+	request.Spec = vmResp.Spec
+	request.Metadata = vmResp.Metadata
+	request.Spec.Resources.PowerState = utils.StringPtr("OFF")
+	
+	resp, err := conn.V3.UpdateVM(d.VMId, request)
+	if err != nil {
+		return err
+	}
+
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	// Wait for the VM to be deleted
+	for i := 0; i < 1200; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil || *resp.Status != "SUCCEEDED" {
+			<-time.After(1 * time.Second)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("unable to Stop VM %s", name)
 }
 
