@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	defaultVMMem = 1024
-	defaultVCPUs = 1
+	defaultVMMem = 2048
+	defaultVCPUs = 2
 	defaultCores = 1
 )
 
