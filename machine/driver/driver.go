@@ -1,11 +1,11 @@
 package driver
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"time"
-	"encoding/base64"
 
 	"nutanix/utils"
 
@@ -80,12 +80,11 @@ func (d *NutanixDriver) Create() error {
 	metadata := &v3.Metadata{}
 	res := &v3.VMResources{}
 
-
 	res.MemorySizeMib = utils.Int64Ptr(int64(d.VMMem))
 	res.NumSockets = utils.Int64Ptr(int64(d.VMVCPUs))
 	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
 
-	// Search target cluster 
+	// Search target cluster
 	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
 	clusters, err := conn.V3.ListAllCluster(clusterFilter)
 	if err != nil {
@@ -95,7 +94,7 @@ func (d *NutanixDriver) Create() error {
 
 	for _, cluster := range clusters.Entities {
 		if *cluster.Status.Name == d.Cluster {
-			
+
 			log.Infof("Cluster %s find with UUID: %s", *cluster.Status.Name, *cluster.Metadata.UUID)
 			spec.ClusterReference = utils.BuildReference(*cluster.Metadata.UUID, "cluster")
 			break
@@ -112,7 +111,7 @@ func (d *NutanixDriver) Create() error {
 
 	for _, subnet := range subnets.Entities {
 		if *subnet.Status.Name == d.Subnet && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
-			
+
 			n := &v3.VMNic{
 				SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
 			}
@@ -128,7 +127,6 @@ func (d *NutanixDriver) Create() error {
 		return fmt.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
 	}
 
-
 	// Search image template
 	imageFilter := fmt.Sprintf("name==%s", d.Image)
 	images, err := conn.V3.ListAllImage(imageFilter)
@@ -139,7 +137,7 @@ func (d *NutanixDriver) Create() error {
 
 	for _, image := range images.Entities {
 		if *image.Status.Name == d.Image {
-			
+
 			n := &v3.VMDisk{
 				DataSourceReference: utils.BuildReference(*image.Metadata.UUID, "image"),
 			}
@@ -216,7 +214,7 @@ func (d *NutanixDriver) Create() error {
 	}
 	d.VMId = uuid
 
-	log.Infof("VM %s successfully created", name )
+	log.Infof("VM %s successfully created", name)
 
 	var vmInfo *v3.VMIntentResponse
 	ipAddr := ""
@@ -362,7 +360,7 @@ func (d *NutanixDriver) GetState() (state.State, error) {
 	if err != nil {
 		return state.Error, err
 	}
-	
+
 	resp, err := conn.V3.GetVM(d.VMId)
 	if err != nil {
 		return state.Error, err
@@ -417,7 +415,7 @@ func (d *NutanixDriver) Remove() error {
 		return err
 	}
 	return fmt.Errorf("unable to delete VM %s", name)
-	
+
 }
 
 func (d *NutanixDriver) Restart() error {
@@ -495,7 +493,7 @@ func (d *NutanixDriver) Start() error {
 	request.Spec = vmResp.Spec
 	request.Metadata = vmResp.Metadata
 	request.Spec.Resources.PowerState = utils.StringPtr("ON")
-	
+
 	resp, err := conn.V3.UpdateVM(d.VMId, request)
 	if err != nil {
 		return err
@@ -546,7 +544,7 @@ func (d *NutanixDriver) Stop() error {
 	request.Spec = vmResp.Spec
 	request.Metadata = vmResp.Metadata
 	request.Spec.Resources.PowerState = utils.StringPtr("OFF")
-	
+
 	resp, err := conn.V3.UpdateVM(d.VMId, request)
 	if err != nil {
 		return err
@@ -565,4 +563,3 @@ func (d *NutanixDriver) Stop() error {
 	}
 	return fmt.Errorf("unable to Stop VM %s", name)
 }
-
