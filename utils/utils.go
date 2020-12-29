@@ -15,6 +15,7 @@ func PrintToJSON(v interface{}, msg string) {
 	fmt.Print("\n", msg, string(pretty))
 }
 
+// ToJSONString beautiful display json
 func ToJSONString(v interface{}) string {
 	pretty, _ := json.MarshalIndent(v, "", "  ")
 
@@ -41,6 +42,7 @@ func DebugResponse(res *http.Response) {
 	log.Printf("[DEBUG] %s\n", string(requestDump))
 }
 
+// ConvertMapString from interface to string
 func ConvertMapString(o map[string]interface{}) map[string]string {
 	converted := make(map[string]string)
 	for k, v := range o {

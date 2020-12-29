@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// UnknownVariableValue well named
 const UnknownVariableValue = "74D93920-ED26-11E3-AC10-0800200C9A66"
 
 // Expand takes a map and a key (prefix) and expands that value into

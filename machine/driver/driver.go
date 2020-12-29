@@ -1,11 +1,11 @@
 package driver
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"time"
-	"encoding/base64"
 
 	"nutanix/utils"
 
@@ -25,6 +25,7 @@ const (
 	defaultCores = 1
 )
 
+// NutanixDriver driver structure
 type NutanixDriver struct {
 	*drivers.BaseDriver
 	Endpoint    string
@@ -44,6 +45,7 @@ type NutanixDriver struct {
 	ProxyURL    string
 }
 
+// NewDriver create new instance
 func NewDriver(hostname, storePath string) *NutanixDriver {
 	return &NutanixDriver{
 		BaseDriver: &drivers.BaseDriver{
@@ -53,6 +55,7 @@ func NewDriver(hostname, storePath string) *NutanixDriver {
 	}
 }
 
+// Create a host using the driver's config
 func (d *NutanixDriver) Create() error {
 	name := d.GetMachineName()
 
@@ -80,12 +83,11 @@ func (d *NutanixDriver) Create() error {
 	metadata := &v3.Metadata{}
 	res := &v3.VMResources{}
 
-
 	res.MemorySizeMib = utils.Int64Ptr(int64(d.VMMem))
 	res.NumSockets = utils.Int64Ptr(int64(d.VMVCPUs))
 	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
 
-	// Search target cluster 
+	// Search target cluster
 	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
 	clusters, err := conn.V3.ListAllCluster(clusterFilter)
 	if err != nil {
@@ -95,7 +97,7 @@ func (d *NutanixDriver) Create() error {
 
 	for _, cluster := range clusters.Entities {
 		if *cluster.Status.Name == d.Cluster {
-			
+
 			log.Infof("Cluster %s find with UUID: %s", *cluster.Status.Name, *cluster.Metadata.UUID)
 			spec.ClusterReference = utils.BuildReference(*cluster.Metadata.UUID, "cluster")
 			break
@@ -112,7 +114,7 @@ func (d *NutanixDriver) Create() error {
 
 	for _, subnet := range subnets.Entities {
 		if *subnet.Status.Name == d.Subnet && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
-			
+
 			n := &v3.VMNic{
 				SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
 			}
@@ -128,7 +130,6 @@ func (d *NutanixDriver) Create() error {
 		return fmt.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
 	}
 
-
 	// Search image template
 	imageFilter := fmt.Sprintf("name==%s", d.Image)
 	images, err := conn.V3.ListAllImage(imageFilter)
@@ -139,7 +140,7 @@ func (d *NutanixDriver) Create() error {
 
 	for _, image := range images.Entities {
 		if *image.Status.Name == d.Image {
-			
+
 			n := &v3.VMDisk{
 				DataSourceReference: utils.BuildReference(*image.Metadata.UUID, "image"),
 			}
@@ -216,7 +217,7 @@ func (d *NutanixDriver) Create() error {
 	}
 	d.VMId = uuid
 
-	log.Infof("VM %s succesfully created", name )
+	log.Infof("VM %s successfully created", name)
 
 	var vmInfo *v3.VMIntentResponse
 	ipAddr := ""
@@ -254,7 +255,7 @@ func (d *NutanixDriver) Create() error {
 		return err
 	case <-time.After(5 * time.Minute):
 		doneChan <- false //end the go routine looking for ip address
-		return fmt.Errorf("Too many retries to wait for IP address.")
+		return fmt.Errorf("Too many retries to wait for IP address")
 	}
 
 	d.IPAddress = ipAddr
@@ -263,10 +264,13 @@ func (d *NutanixDriver) Create() error {
 	return nil
 }
 
+// DriverName returns the name of the driver
 func (d *NutanixDriver) DriverName() string {
 	return "nutanix"
 }
 
+// GetCreateFlags returns the mcnflag.Flag slice representing the flags
+// that can be set, their descriptions and defaults.
 func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
@@ -331,10 +335,12 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 	}
 }
 
+// GetSSHHostname returns hostname for use with ssh
 func (d *NutanixDriver) GetSSHHostname() (string, error) {
 	return d.GetIP()
 }
 
+// GetURL returns a Docker compatible host URL for connecting to this host
 func (d *NutanixDriver) GetURL() (string, error) {
 	ip, err := d.GetIP()
 	if err != nil {
@@ -343,6 +349,7 @@ func (d *NutanixDriver) GetURL() (string, error) {
 	return fmt.Sprintf("tcp://%s", net.JoinHostPort(ip, "2376")), nil
 }
 
+// GetState returns the state that the host is in (running, stopped, etc)
 func (d *NutanixDriver) GetState() (state.State, error) {
 
 	configCreds := client.Credentials{
@@ -362,7 +369,7 @@ func (d *NutanixDriver) GetState() (state.State, error) {
 	if err != nil {
 		return state.Error, err
 	}
-	
+
 	resp, err := conn.V3.GetVM(d.VMId)
 	if err != nil {
 		return state.Error, err
@@ -376,10 +383,12 @@ func (d *NutanixDriver) GetState() (state.State, error) {
 	return state.None, nil
 }
 
+// Kill stops a host forcefully
 func (d *NutanixDriver) Kill() error {
 	return d.Stop()
 }
 
+// Remove a host
 func (d *NutanixDriver) Remove() error {
 	name := d.GetMachineName()
 
@@ -417,9 +426,11 @@ func (d *NutanixDriver) Remove() error {
 		return err
 	}
 	return fmt.Errorf("unable to delete VM %s", name)
-	
+
 }
 
+// Restart a host. This may just call Stop(); Start() if the provider does not
+// have any special restart behaviour.
 func (d *NutanixDriver) Restart() error {
 	err := d.Stop()
 	if err != nil {
@@ -428,6 +439,8 @@ func (d *NutanixDriver) Restart() error {
 	return d.Start()
 }
 
+// SetConfigFromFlags configures the driver with the object that was returned
+// by RegisterCreateFlags
 func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.Username = opts.String("nutanix-username")
 	if d.Username == "" {
@@ -464,6 +477,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	return nil
 }
 
+// Start a host
 func (d *NutanixDriver) Start() error {
 	name := d.GetMachineName()
 
@@ -495,7 +509,7 @@ func (d *NutanixDriver) Start() error {
 	request.Spec = vmResp.Spec
 	request.Metadata = vmResp.Metadata
 	request.Spec.Resources.PowerState = utils.StringPtr("ON")
-	
+
 	resp, err := conn.V3.UpdateVM(d.VMId, request)
 	if err != nil {
 		return err
@@ -515,6 +529,7 @@ func (d *NutanixDriver) Start() error {
 	return fmt.Errorf("unable to Start VM %s", name)
 }
 
+// Stop a host gracefully
 func (d *NutanixDriver) Stop() error {
 	name := d.GetMachineName()
 
@@ -546,7 +561,7 @@ func (d *NutanixDriver) Stop() error {
 	request.Spec = vmResp.Spec
 	request.Metadata = vmResp.Metadata
 	request.Spec.Resources.PowerState = utils.StringPtr("OFF")
-	
+
 	resp, err := conn.V3.UpdateVM(d.VMId, request)
 	if err != nil {
 		return err
@@ -565,4 +580,3 @@ func (d *NutanixDriver) Stop() error {
 	}
 	return fmt.Errorf("unable to Stop VM %s", name)
 }
-
