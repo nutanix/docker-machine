@@ -25,6 +25,7 @@ const (
 	defaultCores = 1
 )
 
+// NutanixDriver driver structure
 type NutanixDriver struct {
 	*drivers.BaseDriver
 	Endpoint    string
@@ -44,6 +45,7 @@ type NutanixDriver struct {
 	ProxyURL    string
 }
 
+// NewDriver create new instance
 func NewDriver(hostname, storePath string) *NutanixDriver {
 	return &NutanixDriver{
 		BaseDriver: &drivers.BaseDriver{
@@ -53,6 +55,7 @@ func NewDriver(hostname, storePath string) *NutanixDriver {
 	}
 }
 
+// Create a host using the driver's config
 func (d *NutanixDriver) Create() error {
 	name := d.GetMachineName()
 
@@ -252,7 +255,7 @@ func (d *NutanixDriver) Create() error {
 		return err
 	case <-time.After(5 * time.Minute):
 		doneChan <- false //end the go routine looking for ip address
-		return fmt.Errorf("Too many retries to wait for IP address.")
+		return fmt.Errorf("Too many retries to wait for IP address")
 	}
 
 	d.IPAddress = ipAddr
@@ -261,10 +264,13 @@ func (d *NutanixDriver) Create() error {
 	return nil
 }
 
+// DriverName returns the name of the driver
 func (d *NutanixDriver) DriverName() string {
 	return "nutanix"
 }
 
+// GetCreateFlags returns the mcnflag.Flag slice representing the flags
+// that can be set, their descriptions and defaults.
 func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
@@ -329,10 +335,12 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 	}
 }
 
+// GetSSHHostname returns hostname for use with ssh
 func (d *NutanixDriver) GetSSHHostname() (string, error) {
 	return d.GetIP()
 }
 
+// GetURL returns a Docker compatible host URL for connecting to this host
 func (d *NutanixDriver) GetURL() (string, error) {
 	ip, err := d.GetIP()
 	if err != nil {
@@ -341,6 +349,7 @@ func (d *NutanixDriver) GetURL() (string, error) {
 	return fmt.Sprintf("tcp://%s", net.JoinHostPort(ip, "2376")), nil
 }
 
+// GetState returns the state that the host is in (running, stopped, etc)
 func (d *NutanixDriver) GetState() (state.State, error) {
 
 	configCreds := client.Credentials{
@@ -374,10 +383,12 @@ func (d *NutanixDriver) GetState() (state.State, error) {
 	return state.None, nil
 }
 
+// Kill stops a host forcefully
 func (d *NutanixDriver) Kill() error {
 	return d.Stop()
 }
 
+// Remove a host
 func (d *NutanixDriver) Remove() error {
 	name := d.GetMachineName()
 
@@ -418,6 +429,8 @@ func (d *NutanixDriver) Remove() error {
 
 }
 
+// Restart a host. This may just call Stop(); Start() if the provider does not
+// have any special restart behaviour.
 func (d *NutanixDriver) Restart() error {
 	err := d.Stop()
 	if err != nil {
@@ -426,6 +439,8 @@ func (d *NutanixDriver) Restart() error {
 	return d.Start()
 }
 
+// SetConfigFromFlags configures the driver with the object that was returned
+// by RegisterCreateFlags
 func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.Username = opts.String("nutanix-username")
 	if d.Username == "" {
@@ -462,6 +477,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	return nil
 }
 
+// Start a host
 func (d *NutanixDriver) Start() error {
 	name := d.GetMachineName()
 
@@ -513,6 +529,7 @@ func (d *NutanixDriver) Start() error {
 	return fmt.Errorf("unable to Start VM %s", name)
 }
 
+// Stop a host gracefully
 func (d *NutanixDriver) Stop() error {
 	name := d.GetMachineName()
 
