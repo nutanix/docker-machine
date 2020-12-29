@@ -216,7 +216,7 @@ func (d *NutanixDriver) Create() error {
 	}
 	d.VMId = uuid
 
-	log.Infof("VM %s succesfully created", name )
+	log.Infof("VM %s successfully created", name )
 
 	var vmInfo *v3.VMIntentResponse
 	ipAddr := ""
