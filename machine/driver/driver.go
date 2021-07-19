@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"strings"
 	"time"
 
 	"nutanix/utils"
@@ -43,6 +44,7 @@ type NutanixDriver struct {
 	VMId        string
 	SessionAuth bool
 	ProxyURL    string
+	Groups      string
 }
 
 // NewDriver create new instance
@@ -54,6 +56,17 @@ func NewDriver(hostname, storePath string) *NutanixDriver {
 		},
 	}
 }
+
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 
 // Create a host using the driver's config
 func (d *NutanixDriver) Create() error {
@@ -105,15 +118,28 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search target subnet
-	subnetFilter := fmt.Sprintf("name==%s", d.Subnet)
+	selectedSubnets := strings.Split(d.Subnet, ",")
+
+	subnetFilter := ""
+
+	for _, subnet := range selectedSubnets {
+		if len(subnetFilter) != 0 {
+			subnetFilter += ","
+		}
+
+		subnetFilter += fmt.Sprintf("name==%s", subnet)
+	}
+
 	subnets, err := conn.V3.ListAllSubnet(subnetFilter)
 	if err != nil {
 		log.Errorf("Error getting subnets: [%v]", err)
 		return err
 	}
 
+
+
 	for _, subnet := range subnets.Entities {
-		if *subnet.Status.Name == d.Subnet && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
+		if contains(selectedSubnets, *subnet.Status.Name) && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
 
 			n := &v3.VMNic{
 				SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
@@ -121,8 +147,21 @@ func (d *NutanixDriver) Create() error {
 
 			res.NicList = append(res.NicList, n)
 			log.Infof("Subnet %s find with UUID: %s", *subnet.Status.Name, *subnet.Metadata.UUID)
-			break
 		}
+	}
+
+	selectedGroups := strings.Split(d.Groups, ",")
+	metadata.Categories =  make(map[string]string)
+
+	for _, group := range selectedGroups {
+		splitGroup := strings.Split(group, ":")
+		if len(splitGroup) < 2 {
+			log.Errorf("Malformed group %s", group)
+			return fmt.Errorf("malformed group %s", group)
+		}
+
+		metadata.Categories[splitGroup[0]] = splitGroup[1]
+		log.Infof("Added group %s:%s", splitGroup[0], splitGroup[1])
 	}
 
 	if len(res.NicList) < 1 {
@@ -137,6 +176,8 @@ func (d *NutanixDriver) Create() error {
 		log.Errorf("Error getting images: [%v]", err)
 		return err
 	}
+
+
 
 	for _, image := range images.Entities {
 		if *image.Status.Name == d.Image {
@@ -332,6 +373,11 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "nutanix-vm-image",
 			Usage:  "The name of the VM disk to clone from, for the newly created VM",
 		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_VM_GROUP",
+			Name:  "nutanix-vm-group",
+			Usage: "The name of the group to attach to the newly created VM",
+		},
 	}
 }
 
@@ -457,6 +503,8 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.Port = opts.String("nutanix-port")
 
 	d.Insecure = opts.Bool("nutanix-insecure")
+
+	d.Groups = opts.String("nutanix-vm-group")
 
 	d.Cluster = opts.String("nutanix-cluster")
 	if d.Cluster == "" {
