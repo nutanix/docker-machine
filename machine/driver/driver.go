@@ -141,15 +141,17 @@ func (d *NutanixDriver) Create() error {
 		return err
 	}
 
-	for _, subnet := range subnets.Entities {
-		if contains(selectedSubnets, *subnet.Status.Name) && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
+	for _, query := range selectedSubnets {
+		for _, subnet := range subnets.Entities {
+			if *subnet.Status.Name == query && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
+				n := &v3.VMNic{
+					SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
+				}
 
-			n := &v3.VMNic{
-				SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
+				res.NicList = append(res.NicList, n)
+				log.Infof("Subnet %s find with UUID: %s", *subnet.Status.Name, *subnet.Metadata.UUID)
+				break
 			}
-
-			res.NicList = append(res.NicList, n)
-			log.Infof("Subnet %s find with UUID: %s", *subnet.Status.Name, *subnet.Metadata.UUID)
 		}
 	}
 
