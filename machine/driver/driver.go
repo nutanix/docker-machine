@@ -120,6 +120,11 @@ func (d *NutanixDriver) Create() error {
 	// Search target subnet
 	selectedSubnets := strings.Split(d.Subnet, ",")
 
+	for index, subnet := range selectedSubnets {
+		// Trim extraneous whitespace
+		selectedSubnets[index] = strings.TrimSpace(subnet)
+	}
+
 	subnetFilter := ""
 
 	for _, subnet := range selectedSubnets {
@@ -135,8 +140,6 @@ func (d *NutanixDriver) Create() error {
 		log.Errorf("Error getting subnets: [%v]", err)
 		return err
 	}
-
-
 
 	for _, subnet := range subnets.Entities {
 		if contains(selectedSubnets, *subnet.Status.Name) && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
@@ -155,10 +158,15 @@ func (d *NutanixDriver) Create() error {
 
 	for _, group := range selectedGroups {
 		splitGroup := strings.Split(group, ":")
+
 		if len(splitGroup) < 2 {
 			log.Errorf("Malformed group %s", group)
 			return fmt.Errorf("malformed group %s", group)
 		}
+
+		// Strip extraneous whitespace to make this more error tolerant
+		splitGroup[0] = strings.TrimSpace(splitGroup[0])
+		splitGroup[1] = strings.TrimSpace(splitGroup[1])
 
 		metadata.Categories[splitGroup[0]] = splitGroup[1]
 		log.Infof("Added group %s:%s", splitGroup[0], splitGroup[1])
@@ -377,6 +385,7 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "NUTANIX_VM_GROUP",
 			Name:  "nutanix-vm-group",
 			Usage: "The name of the group to attach to the newly created VM",
+			Value: "",
 		},
 	}
 }
