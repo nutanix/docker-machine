@@ -1,42 +1,53 @@
 package driver
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
+	"strings"
 	"time"
 
-	"nutanix/client/api/mgmt"
-	"nutanix/client/api/rest"
+	"nutanix/utils"
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
-	gouuid "github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/terraform-providers/terraform-provider-nutanix/client"
+	v3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
 )
 
 const (
-	defaultVMMem = 1024
-	defaultVCPUs = 1
+	defaultVMMem = 2048
+	defaultVCPUs = 2
 	defaultCores = 1
 )
 
+// NutanixDriver driver structure
 type NutanixDriver struct {
 	*drivers.BaseDriver
-	Username string
-	Password string
-	Endpoint string
-	VMMem    int
-	VMVCPUs  int
-	VMCores  int
-	SSHPass  string
-	VLAN     string
-	Image    string
-	VMId     string
+	Endpoint    string
+	Username    string
+	Password    string
+	Port        string
+	Insecure    bool
+	Cluster     string
+	VMVCPUs     int
+	VMCores     int
+	VMMem       int
+	SSHPass     string
+	Subnet      string
+	Image       string
+	VMId        string
+	SessionAuth bool
+	ProxyURL    string
+	Groups      string
 }
 
+// NewDriver create new instance
 func NewDriver(hostname, storePath string) *NutanixDriver {
 	return &NutanixDriver{
 		BaseDriver: &drivers.BaseDriver{
@@ -46,59 +57,155 @@ func NewDriver(hostname, storePath string) *NutanixDriver {
 	}
 }
 
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
+
+// Create a host using the driver's config
 func (d *NutanixDriver) Create() error {
 	name := d.GetMachineName()
-	c := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	r := rest.NewNutanixRESTClient(d.Endpoint, d.Username, d.Password)
 
-	uuid := gouuid.New().String()
-
-	vmConfig := &mgmt.VMCreateDTO{
-		MemoryMB:              d.VMMem,
-		Name:                  name,
-		NumVcpus:              d.VMVCPUs,
-		NumCoresPerVcpu:       d.VMCores,
-		UUID:                  uuid,
-		VMDisks:               []*mgmt.VMDiskDTO{},
-		VMNics:                []*mgmt.VMNicSpecDTO{},
-		VMCustomizationConfig: &mgmt.VMCustomizationConfigDTO{},
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
 	}
-	networks, err := c.GetNetworkList()
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
-		log.Errorf("Error getting networks: [%v]", err)
 		return err
 	}
 
-	for _, net := range networks.Entities {
-		if net.Name == d.VLAN {
-			n := &mgmt.VMNicSpecDTO{
-				NetworkUUID: net.UUID,
-			}
-			vmConfig.VMNics = append(vmConfig.VMNics, n)
+	// Prepare VM creation request
+	request := &v3.VMIntentInput{}
+	spec := &v3.VM{}
+	metadata := &v3.Metadata{}
+	res := &v3.VMResources{}
+
+	res.MemorySizeMib = utils.Int64Ptr(int64(d.VMMem))
+	res.NumSockets = utils.Int64Ptr(int64(d.VMVCPUs))
+	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
+
+	// Search target cluster
+	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
+	clusters, err := conn.V3.ListAllCluster(clusterFilter)
+	if err != nil {
+		log.Errorf("Error getting clusters: [%v]", err)
+		return err
+	}
+
+	for _, cluster := range clusters.Entities {
+		if *cluster.Status.Name == d.Cluster {
+
+			log.Infof("Cluster %s find with UUID: %s", *cluster.Status.Name, *cluster.Metadata.UUID)
+			spec.ClusterReference = utils.BuildReference(*cluster.Metadata.UUID, "cluster")
 			break
 		}
 	}
-	
-	images, err := c.GetImageList()
+
+	// Search target subnet
+	selectedSubnets := strings.Split(d.Subnet, ",")
+
+	for index, subnet := range selectedSubnets {
+		// Trim extraneous whitespace
+		selectedSubnets[index] = strings.TrimSpace(subnet)
+	}
+
+	subnetFilter := ""
+
+	for _, subnet := range selectedSubnets {
+		if len(subnetFilter) != 0 {
+			subnetFilter += ","
+		}
+
+		subnetFilter += fmt.Sprintf("name==%s", subnet)
+	}
+
+	subnets, err := conn.V3.ListAllSubnet(subnetFilter)
+	if err != nil {
+		log.Errorf("Error getting subnets: [%v]", err)
+		return err
+	}
+
+	for _, subnet := range subnets.Entities {
+		if contains(selectedSubnets, *subnet.Status.Name) && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
+
+			n := &v3.VMNic{
+				SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
+			}
+
+			res.NicList = append(res.NicList, n)
+			log.Infof("Subnet %s find with UUID: %s", *subnet.Status.Name, *subnet.Metadata.UUID)
+		}
+	}
+
+	selectedGroups := strings.Split(d.Groups, ",")
+	metadata.Categories =  make(map[string]string)
+
+	for _, group := range selectedGroups {
+		splitGroup := strings.Split(group, ":")
+
+		if len(splitGroup) < 2 {
+			log.Errorf("Malformed group %s", group)
+			return fmt.Errorf("malformed group %s", group)
+		}
+
+		// Strip extraneous whitespace to make this more error tolerant
+		splitGroup[0] = strings.TrimSpace(splitGroup[0])
+		splitGroup[1] = strings.TrimSpace(splitGroup[1])
+
+		metadata.Categories[splitGroup[0]] = splitGroup[1]
+		log.Infof("Added group %s:%s", splitGroup[0], splitGroup[1])
+	}
+
+	if len(res.NicList) < 1 {
+		log.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
+		return fmt.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
+	}
+
+	// Search image template
+	imageFilter := fmt.Sprintf("name==%s", d.Image)
+	images, err := conn.V3.ListAllImage(imageFilter)
 	if err != nil {
 		log.Errorf("Error getting images: [%v]", err)
 		return err
 	}
 
 
-	for _, img := range images.Entities {
-		if img.Name == d.Image {
-			d := &mgmt.VMDiskDTO{
-				VMDiskClone: &mgmt.VMDiskSpecCloneDTO{
-					VMDiskUUID: img.VMDiskID,
-				},
+
+	for _, image := range images.Entities {
+		if *image.Status.Name == d.Image {
+
+			n := &v3.VMDisk{
+				DataSourceReference: utils.BuildReference(*image.Metadata.UUID, "image"),
 			}
-			vmConfig.VMDisks = append(vmConfig.VMDisks, d)
+
+			res.DiskList = append(res.DiskList, n)
+			log.Infof("Image %s find with UUID: %s", *image.Status.Name, *image.Metadata.UUID)
 			break
 		}
 	}
-	
 
+	if len(res.DiskList) < 1 {
+		log.Errorf("Image %s not found", d.Image)
+		return fmt.Errorf("Image %s not found", d.Image)
+	}
+
+	// SSH Key generation
 	err = ssh.GenerateSSHKey(d.GetSSHKeyPath())
 	if err != nil {
 		log.Errorf("Error generating ssh key")
@@ -110,39 +217,58 @@ func (d *NutanixDriver) Create() error {
 		log.Errorf("Error reading public key")
 		return err
 	}
-	vmConfig.VMCustomizationConfig.DataSourceType = "CONFIG_DRIVE_V2"
-	vmConfig.VMCustomizationConfig.Userdata = "#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey)
 
-	_, err = r.CreateVM(vmConfig)
+	log.Infof("SSH pub key ready (%s)", pubKey)
+
+	// CloudInit preparation
+
+	// vmConfig.VMCustomizationConfig.DataSourceType = "CONFIG_DRIVE_V2"
+	userdata := []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
+
+	cloudInit := &v3.GuestCustomizationCloudInit{
+		UserData: utils.StringPtr(base64.StdEncoding.EncodeToString(userdata)),
+	}
+
+	guestCustomization := &v3.GuestCustomization{
+		CloudInit: cloudInit,
+	}
+
+	res.GuestCustomization = guestCustomization
+
+	metadata.Kind = utils.StringPtr("vm")
+	spec.Name = utils.StringPtr(name)
+	spec.Description = utils.StringPtr("VM created by docker-image")
+	res.PowerState = utils.StringPtr("ON")
+	spec.Resources = res
+	request.Metadata = metadata
+	request.Spec = spec
+
+	log.Infof("Launch VM creation")
+	resp, err := conn.V3.CreateVM(request)
 	if err != nil {
 		log.Errorf("Error creating vm: [%v]", err)
 		return err
 	}
 
-	vmId := uuid
+	uuid := *resp.Metadata.UUID
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	log.Infof("waiting for vm (%s) to create: %s", uuid, taskUUID)
+
+	// Wait for the VM to be available
 	for i := 0; i < 1200; i++ {
-		vmDTO, err := r.GetVMInfo(uuid)
-		if err != nil || len(vmDTO.NutanixVirtualDisks) < (2) {
+		vmIntent, err := conn.V3.GetVM(uuid)
+		if err != nil || len(vmIntent.Spec.Resources.DiskList) < (2) {
 			<-time.After(1 * time.Second)
 			continue
 		}
 		break
 	}
-	d.VMId = vmId
+	d.VMId = uuid
 
-	taskDO, err := c.PowerOn(vmId)
-	if err != nil {
-		log.Errorf("Error powering vm on: [%v]", err)
-		return err
-	}
+	log.Infof("VM %s successfully created", name)
 
-	_, err = c.Wait(taskDO.TaskUUID)
-	if err != nil {
-		log.Errorf("Error waiting for power on task to complete: [%v]", err)
-		return err
-	}
-
-	var vmDTO *rest.VMDTO
+	var vmInfo *v3.VMIntentResponse
 	ipAddr := ""
 
 	doneChan := make(chan bool, 1)
@@ -157,14 +283,14 @@ func (d *NutanixDriver) Create() error {
 			default:
 			}
 			var err error
-			vmDTO, err = r.GetVMInfo(vmId)
+			vmInfo, err = conn.V3.GetVM(uuid)
 			if err != nil {
 				log.Errorf("Error getting vm data from rest api: [%v]", err)
 				errChan <- err
 				break
 			}
-			if len(vmDTO.IpAddresses) > 0 {
-				ipAddr = vmDTO.IpAddresses[0]
+			if len(vmInfo.Status.Resources.NicList[0].IPEndpointList) > 0 {
+				ipAddr = *vmInfo.Status.Resources.NicList[0].IPEndpointList[0].IP
 				doneChan <- true
 				break
 			}
@@ -178,7 +304,7 @@ func (d *NutanixDriver) Create() error {
 		return err
 	case <-time.After(5 * time.Minute):
 		doneChan <- false //end the go routine looking for ip address
-		return fmt.Errorf("Too many retries to wait for IP address.")
+		return fmt.Errorf("Too many retries to wait for IP address")
 	}
 
 	d.IPAddress = ipAddr
@@ -187,10 +313,13 @@ func (d *NutanixDriver) Create() error {
 	return nil
 }
 
+// DriverName returns the name of the driver
 func (d *NutanixDriver) DriverName() string {
 	return "nutanix"
 }
 
+// GetCreateFlags returns the mcnflag.Flag slice representing the flags
+// that can be set, their descriptions and defaults.
 func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
@@ -207,6 +336,22 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "NUTANIX_ENDPOINT",
 			Name:   "nutanix-endpoint",
 			Usage:  "Nutanix management endpoint ip address/FQDN",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_PORT",
+			Name:   "nutanix-port",
+			Usage:  "Nutanix management endpoint port (default: 9440)",
+			Value:  "9440",
+		},
+		mcnflag.BoolFlag{
+			EnvVar: "NUTANIX_INSECURE",
+			Name:   "nutanix-insecure",
+			Usage:  "Explicitly allow the provider to perform \"insecure\" SSL requests",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_CLUSTER",
+			Name:   "nutanix-cluster",
+			Usage:  "Nutanix Cluster to install VM on",
 		},
 		mcnflag.IntFlag{
 			EnvVar: "NUTANIX_VM_MEM",
@@ -228,21 +373,29 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_NETWORK",
-			Name:  "nutanix-vm-network",
-			Usage: "The name of the network to attach to the newly created VM",
+			Name:   "nutanix-vm-network",
+			Usage:  "The name of the network to attach to the newly created VM",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_IMAGE",
-			Name:  "nutanix-vm-image",
-			Usage: "The name of the VM disk to clone from, for the newly created VM",
+			Name:   "nutanix-vm-image",
+			Usage:  "The name of the VM disk to clone from, for the newly created VM",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_VM_GROUP",
+			Name:  "nutanix-vm-group",
+			Usage: "The name of the group to attach to the newly created VM",
+			Value: "",
 		},
 	}
 }
 
+// GetSSHHostname returns hostname for use with ssh
 func (d *NutanixDriver) GetSSHHostname() (string, error) {
 	return d.GetIP()
 }
 
+// GetURL returns a Docker compatible host URL for connecting to this host
 func (d *NutanixDriver) GetURL() (string, error) {
 	ip, err := d.GetIP()
 	if err != nil {
@@ -251,41 +404,88 @@ func (d *NutanixDriver) GetURL() (string, error) {
 	return fmt.Sprintf("tcp://%s", net.JoinHostPort(ip, "2376")), nil
 }
 
+// GetState returns the state that the host is in (running, stopped, etc)
 func (d *NutanixDriver) GetState() (state.State, error) {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	vmInfoDTO, err := m.GetVMInfo(d.VMId)
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return state.Error, err
 	}
-	switch vmInfoDTO.State {
-	case "on":
+
+	resp, err := conn.V3.GetVM(d.VMId)
+	if err != nil {
+		return state.Error, err
+	}
+	switch *resp.Status.Resources.PowerState {
+	case "ON":
 		return state.Running, nil
-	case "off":
+	case "OFF":
 		return state.Stopped, nil
 	}
 	return state.None, nil
 }
 
+// Kill stops a host forcefully
 func (d *NutanixDriver) Kill() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.PowerOff(d.VMId)
-	if err != nil {
-		return err
-	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+	return d.Stop()
 }
 
+// Remove a host
 func (d *NutanixDriver) Remove() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.DeleteVM(d.VMId)
+	name := d.GetMachineName()
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+	resp, err := conn.V3.DeleteVM(d.VMId)
+	if err != nil {
+		return err
+	}
+
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	// Wait for the VM to be deleted
+	for i := 0; i < 1200; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil || *resp.Status != "SUCCEEDED" {
+			<-time.After(1 * time.Second)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("unable to delete VM %s", name)
+
 }
 
+// Restart a host. This may just call Stop(); Start() if the provider does not
+// have any special restart behaviour.
 func (d *NutanixDriver) Restart() error {
 	err := d.Stop()
 	if err != nil {
@@ -294,6 +494,8 @@ func (d *NutanixDriver) Restart() error {
 	return d.Start()
 }
 
+// SetConfigFromFlags configures the driver with the object that was returned
+// by RegisterCreateFlags
 func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.Username = opts.String("nutanix-username")
 	if d.Username == "" {
@@ -307,11 +509,22 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	if d.Endpoint == "" {
 		return fmt.Errorf("nutanix-endpoint cannot be empty")
 	}
+	d.Port = opts.String("nutanix-port")
+
+	d.Insecure = opts.Bool("nutanix-insecure")
+
+	d.Groups = opts.String("nutanix-vm-group")
+
+	d.Cluster = opts.String("nutanix-cluster")
+	if d.Cluster == "" {
+		return fmt.Errorf("nutanix-cluster cannot be empty")
+	}
+
 	d.VMMem = opts.Int("nutanix-vm-mem")
 	d.VMVCPUs = opts.Int("nutanix-vm-cpus")
 	d.VMCores = opts.Int("nutanix-vm-cores")
-	d.VLAN = opts.String("nutanix-vm-network")
-	if d.VLAN == "" {
+	d.Subnet = opts.String("nutanix-vm-network")
+	if d.Subnet == "" {
 		return fmt.Errorf("nutanix-vm-network cannot be empty")
 	}
 	d.Image = opts.String("nutanix-vm-image")
@@ -321,22 +534,106 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	return nil
 }
 
+// Start a host
 func (d *NutanixDriver) Start() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.PowerOn(d.VMId)
+	name := d.GetMachineName()
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+
+	vmResp, err := conn.V3.GetVM(d.VMId)
+	if err != nil {
+		return err
+	}
+
+	// Prepare VM update request
+	request := &v3.VMIntentInput{}
+	request.Spec = vmResp.Spec
+	request.Metadata = vmResp.Metadata
+	request.Spec.Resources.PowerState = utils.StringPtr("ON")
+
+	resp, err := conn.V3.UpdateVM(d.VMId, request)
+	if err != nil {
+		return err
+	}
+
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	// Wait for the VM to be deleted
+	for i := 0; i < 1200; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil || *resp.Status != "SUCCEEDED" {
+			<-time.After(1 * time.Second)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("unable to Start VM %s", name)
 }
 
+// Stop a host gracefully
 func (d *NutanixDriver) Stop() error {
-	m := mgmt.NewNutanixMGMTClient(d.Endpoint, d.Username, d.Password)
-	taskDO, err := m.PowerOff(d.VMId)
+	name := d.GetMachineName()
+
+	configCreds := client.Credentials{
+		URL:         fmt.Sprintf("%s:%s", d.Endpoint, d.Port),
+		Endpoint:    d.Endpoint,
+		Username:    d.Username,
+		Password:    d.Password,
+		Port:        d.Port,
+		Insecure:    d.Insecure,
+		SessionAuth: d.SessionAuth,
+		ProxyURL:    d.ProxyURL,
+	}
+
+	log.Infof("Connecting on: %s", configCreds.URL)
+
+	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
 		return err
 	}
-	_, err = m.Wait(taskDO.TaskUUID)
-	return err
+
+	vmResp, err := conn.V3.GetVM(d.VMId)
+	if err != nil {
+		return err
+	}
+
+	// Prepare VM update request
+	request := &v3.VMIntentInput{}
+	request.Spec = vmResp.Spec
+	request.Metadata = vmResp.Metadata
+	request.Spec.Resources.PowerState = utils.StringPtr("OFF")
+
+	resp, err := conn.V3.UpdateVM(d.VMId, request)
+	if err != nil {
+		return err
+	}
+
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	// Wait for the VM to be deleted
+	for i := 0; i < 1200; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil || *resp.Status != "SUCCEEDED" {
+			<-time.After(1 * time.Second)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("unable to Stop VM %s", name)
 }

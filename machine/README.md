@@ -25,11 +25,13 @@ Driver Args
 -----------
 |Arg                             |Description                                                              |Required          |
 |--------------------------------|:------------------------------------------------------------------------|:-----------------|
+| `--nutanix-endpoint`           |The hostname/ip-address of the Prism Central                             |yes               |
 | `--nutanix-username`           |The username of the nutanix management account                           |yes               |
 | `--nutanix-password`           |The password of the nutanix management account                           |yes               |
-| `--nutanix-endpoint`           |The hostname/ip-address of the management API server of the cluster      |yes               |
-| `--nutanix-vm-mem`             |The amount of RAM of the newly created VM                                |no (default=1G)   |
-| `--nutanix-vm-cpus`            |The number of cpus in the newly created VM                               |no (default=1)    |
+| `--nutanix-insecure`           |Set to true to force SSL insecure connection                             |no (default=false)|
+| `--nutanix-cluster`            |The name of the cluster where deploy the VM (case sensitive)             |yes               |
+| `--nutanix-vm-mem`             |The amount of RAM of the newly created VM                                |no (default=2G)   |
+| `--nutanix-vm-cpus`            |The number of cpus in the newly created VM                               |no (default=2)    |
 | `--nutanix-vm-cores`           |The number of cores per vCPU                                             |no (default=1)    |
 | `--nutanix-vm-network`         |The network to which the vNIC of the VM is attached to                   |yes               |
 | `--nutanix-vm-image`           |The name of the Image to clone from                                      |yes               |

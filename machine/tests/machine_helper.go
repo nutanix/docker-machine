@@ -9,6 +9,7 @@ const (
 	driver = "nutanix"
 )
 
+// MachineConfig structure
 type MachineConfig struct {
 	VMMem       int
 	VMCPUs      int
@@ -23,6 +24,7 @@ type MachineConfig struct {
 	Endpoint    string
 }
 
+// CreateMachine test new machine creation
 func (c MachineConfig) CreateMachine() ([]byte, error) {
 	vmMem := c.VMMem
 	if vmMem == 0 {
@@ -75,6 +77,7 @@ func (c MachineConfig) CreateMachine() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+// DeleteMachine test delete machine creation
 func (c MachineConfig) DeleteMachine() ([]byte, error) {
 	args := []string{
 		"rm",
@@ -84,6 +87,7 @@ func (c MachineConfig) DeleteMachine() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+// StartMachine test start machine
 func (c MachineConfig) StartMachine() ([]byte, error) {
 	args := []string{
 		"start",
@@ -93,6 +97,7 @@ func (c MachineConfig) StartMachine() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+// StopMachine test stop machine
 func (c MachineConfig) StopMachine() ([]byte, error) {
 	args := []string{
 		"stop",
