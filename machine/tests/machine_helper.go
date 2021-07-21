@@ -5,9 +5,9 @@ import (
 	"os/exec"
 )
 
-const (
-	driver = "nutanix"
-)
+// const (
+// 	driver = "nutanix"
+// )
 
 // MachineConfig structure
 type MachineConfig struct {

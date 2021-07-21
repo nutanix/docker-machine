@@ -57,17 +57,6 @@ func NewDriver(hostname, storePath string) *NutanixDriver {
 	}
 }
 
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
-}
-
-
 // Create a host using the driver's config
 func (d *NutanixDriver) Create() error {
 	name := d.GetMachineName()
@@ -156,7 +145,7 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	selectedGroups := strings.Split(d.Groups, ",")
-	metadata.Categories =  make(map[string]string)
+	metadata.Categories = make(map[string]string)
 
 	for _, group := range selectedGroups {
 		splitGroup := strings.Split(group, ":")
@@ -176,7 +165,7 @@ func (d *NutanixDriver) Create() error {
 
 	if len(res.NicList) < 1 {
 		log.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
-		return fmt.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
+		return fmt.Errorf("network %s not found in cluster %s", d.Subnet, d.Cluster)
 	}
 
 	// Search image template
@@ -186,8 +175,6 @@ func (d *NutanixDriver) Create() error {
 		log.Errorf("Error getting images: [%v]", err)
 		return err
 	}
-
-
 
 	for _, image := range images.Entities {
 		if *image.Status.Name == d.Image {
@@ -204,7 +191,7 @@ func (d *NutanixDriver) Create() error {
 
 	if len(res.DiskList) < 1 {
 		log.Errorf("Image %s not found", d.Image)
-		return fmt.Errorf("Image %s not found", d.Image)
+		return fmt.Errorf("image %s not found", d.Image)
 	}
 
 	// SSH Key generation
@@ -270,46 +257,16 @@ func (d *NutanixDriver) Create() error {
 
 	log.Infof("VM %s successfully created", name)
 
-	var vmInfo *v3.VMIntentResponse
-	ipAddr := ""
-
-	doneChan := make(chan bool, 1)
-	errChan := make(chan error, 1)
-
-	go func(doneChan chan bool, errChan chan error) {
-		for {
-			select {
-			case <-doneChan:
-				// used to stop the goroutine if needed
-				break
-			default:
-			}
-			var err error
-			vmInfo, err = conn.V3.GetVM(uuid)
-			if err != nil {
-				log.Errorf("Error getting vm data from rest api: [%v]", err)
-				errChan <- err
-				break
-			}
-			if len(vmInfo.Status.Resources.NicList[0].IPEndpointList) > 0 {
-				ipAddr = *vmInfo.Status.Resources.NicList[0].IPEndpointList[0].IP
-				doneChan <- true
-				break
-			}
+	// Wait for the VM obtain an IP address
+	for i := 0; i < 60; i++ {
+		vmInfo, err := conn.V3.GetVM(uuid)
+		if err != nil || len(vmInfo.Status.Resources.NicList[0].IPEndpointList) == (0) {
 			<-time.After(5 * time.Second)
+			continue
 		}
-	}(doneChan, errChan)
-
-	select {
-	case <-doneChan:
-	case err := <-errChan:
-		return err
-	case <-time.After(5 * time.Minute):
-		doneChan <- false //end the go routine looking for ip address
-		return fmt.Errorf("Too many retries to wait for IP address")
+		d.IPAddress = *vmInfo.Status.Resources.NicList[0].IPEndpointList[0].IP
+		break
 	}
-
-	d.IPAddress = ipAddr
 
 	log.Infof("Created Nutanix Host %s, IP: %s", name, d.IPAddress)
 	return nil
@@ -385,9 +342,9 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_GROUP",
-			Name:  "nutanix-vm-group",
-			Usage: "The name of the group to attach to the newly created VM",
-			Value: "",
+			Name:   "nutanix-vm-group",
+			Usage:  "The name of the group to attach to the newly created VM",
+			Value:  "",
 		},
 	}
 }
