@@ -16,6 +16,9 @@ test: $(SOURCES)
 clean:
 	@rm -rf build/$(BINARY)
 
+local: 
+	CGO_ENABLED=0 go build -o /usr/local/bin/$(BINARY) -${LDFLAGS} machine/main.go
+
 check: ## Static Check Golang files
 	@staticcheck ./...
 

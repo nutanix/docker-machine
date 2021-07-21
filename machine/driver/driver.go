@@ -44,7 +44,7 @@ type NutanixDriver struct {
 	VMId        string
 	SessionAuth bool
 	ProxyURL    string
-	Groups      string
+	Categories  string
 }
 
 // NewDriver create new instance
@@ -144,28 +144,30 @@ func (d *NutanixDriver) Create() error {
 		}
 	}
 
-	selectedGroups := strings.Split(d.Groups, ",")
-	metadata.Categories = make(map[string]string)
-
-	for _, group := range selectedGroups {
-		splitGroup := strings.Split(group, ":")
-
-		if len(splitGroup) < 2 {
-			log.Errorf("Malformed group %s", group)
-			return fmt.Errorf("malformed group %s", group)
-		}
-
-		// Strip extraneous whitespace to make this more error tolerant
-		splitGroup[0] = strings.TrimSpace(splitGroup[0])
-		splitGroup[1] = strings.TrimSpace(splitGroup[1])
-
-		metadata.Categories[splitGroup[0]] = splitGroup[1]
-		log.Infof("Added group %s:%s", splitGroup[0], splitGroup[1])
-	}
-
 	if len(res.NicList) < 1 {
 		log.Errorf("Network %s not found in cluster %s", d.Subnet, d.Cluster)
 		return fmt.Errorf("network %s not found in cluster %s", d.Subnet, d.Cluster)
+	}
+
+	if d.Categories != "" {
+		selectedCategories := strings.Split(d.Categories, ",")
+		metadata.Categories = make(map[string]string)
+
+		for _, group := range selectedCategories {
+			category := strings.Split(group, ":")
+
+			if len(category) < 2 {
+				log.Errorf("Malformed group %s", group)
+				return fmt.Errorf("malformed group %s", group)
+			}
+
+			// Strip extraneous whitespace to make this more error tolerant
+			category[0] = strings.TrimSpace(category[0])
+			category[1] = strings.TrimSpace(category[1])
+
+			metadata.Categories[category[0]] = category[1]
+			log.Infof("Added category %s: %s", category[0], category[1])
+		}
 	}
 
 	// Search image template
@@ -245,10 +247,11 @@ func (d *NutanixDriver) Create() error {
 	log.Infof("waiting for vm (%s) to create: %s", uuid, taskUUID)
 
 	// Wait for the VM to be available
-	for i := 0; i < 1200; i++ {
+	for i := 0; i < 60; i++ {
 		vmIntent, err := conn.V3.GetVM(uuid)
 		if err != nil || len(vmIntent.Spec.Resources.DiskList) < (2) {
-			<-time.After(1 * time.Second)
+			log.Infof("Waiting VM %s creation", name)
+			<-time.After(5 * time.Second)
 			continue
 		}
 		break
@@ -261,14 +264,15 @@ func (d *NutanixDriver) Create() error {
 	for i := 0; i < 60; i++ {
 		vmInfo, err := conn.V3.GetVM(uuid)
 		if err != nil || len(vmInfo.Status.Resources.NicList[0].IPEndpointList) == (0) {
+			log.Infof("Waiting VM %s ip configuration", name)
 			<-time.After(5 * time.Second)
 			continue
 		}
 		d.IPAddress = *vmInfo.Status.Resources.NicList[0].IPEndpointList[0].IP
+		log.Infof("VM %s configured with ip address %s", name, d.IPAddress)
 		break
 	}
 
-	log.Infof("Created Nutanix Host %s, IP: %s", name, d.IPAddress)
 	return nil
 }
 
@@ -341,9 +345,9 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "The name of the VM disk to clone from, for the newly created VM",
 		},
 		mcnflag.StringFlag{
-			EnvVar: "NUTANIX_VM_GROUP",
-			Name:   "nutanix-vm-group",
-			Usage:  "The name of the group to attach to the newly created VM",
+			EnvVar: "NUTANIX_VM_CATEGORIES",
+			Name:   "nutanix-vm-categories",
+			Usage:  "The name of the categories who will be applied to the newly created VM",
 			Value:  "",
 		},
 	}
@@ -472,7 +476,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 
 	d.Insecure = opts.Bool("nutanix-insecure")
 
-	d.Groups = opts.String("nutanix-vm-group")
+	d.Categories = opts.String("nutanix-vm-categories")
 
 	d.Cluster = opts.String("nutanix-cluster")
 	if d.Cluster == "" {
