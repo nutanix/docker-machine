@@ -19,7 +19,7 @@ Features
 3. Ability to set a custom name for the newly created VM
 4. Ability to set the number of cores per vCPU
 5. Ability to specify the network(s) of the VM
-6. Ability to specify the disk in the VM by image name
+6. Ability to specify the template disk in the VM by image name and modify his size (increase only)
 7. Ability to specify categories to applied to the VM ( flow, leap, ...)
 8. Ability to add one additional disk by specifying disk-size and storage-container
 
