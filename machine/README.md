@@ -38,5 +38,5 @@ Driver Args
 | `--nutanix-vm-network`         |The network(s) to which the VM is attached to, support multiple network (separated by a comma)|yes               |
 | `--nutanix-vm-image`           |The name of the Image to clone from                                      |yes               |
 | `--nutanix-vm-categories`      |The name of the categories who will be applied to the newly created VM   |no                |
-| `--nutanix-disk-size`          |The size of the additional disk to add to the VM                         |no                |
+| `--nutanix-disk-size`          |The size of the additional disk to add to the VM (in GiB)                |no                |
 | `--nutanix-storage-container`  |The storage container UUID of the additional disk to add to the VM       |no                |
