@@ -33,6 +33,6 @@ Driver Args
 | `--nutanix-vm-mem`             |The amount of RAM of the newly created VM                                |no (default=2G)   |
 | `--nutanix-vm-cpus`            |The number of cpus in the newly created VM                               |no (default=2)    |
 | `--nutanix-vm-cores`           |The number of cores per vCPU                                             |no (default=1)    |
-| `--nutanix-vm-network`         |The network to which the vNIC of the VM is attached to                   |yes               |
+| `--nutanix-vm-network`         |The network(s) to which the VM is attached to, support multiple network (separated by a comma)|yes               |
 | `--nutanix-vm-image`           |The name of the Image to clone from                                      |yes               |
 
