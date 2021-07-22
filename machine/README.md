@@ -18,8 +18,9 @@ Features
 2. Ability to select VM's vCPU count
 3. Ability to set a custom name for the newly created VM
 4. Ability to set the number of cores per vCPU
-5. Ability to specify the network of the VM
+5. Ability to specify the network(s) of the VM
 6. Ability to specify the disk in the VM by image name
+7. Ability to specify categories to applied to the VM ( flow, leap, ...)
 
 Driver Args
 -----------
@@ -35,4 +36,5 @@ Driver Args
 | `--nutanix-vm-cores`           |The number of cores per vCPU                                             |no (default=1)    |
 | `--nutanix-vm-network`         |The network(s) to which the VM is attached to, support multiple network (separated by a comma)|yes               |
 | `--nutanix-vm-image`           |The name of the Image to clone from                                      |yes               |
+| `--nutanix-vm-categories`      |The name of the categories who will be applied to the newly created VM   |no                |
 
