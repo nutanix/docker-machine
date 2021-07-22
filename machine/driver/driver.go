@@ -41,6 +41,7 @@ type NutanixDriver struct {
 	SSHPass          string
 	Subnet           string
 	Image            string
+	ImageSize        int
 	VMId             string
 	SessionAuth      bool
 	ProxyURL         string
@@ -183,11 +184,20 @@ func (d *NutanixDriver) Create() error {
 	for _, image := range images.Entities {
 		if *image.Status.Name == d.Image {
 
-			n := &v3.VMDisk{
-				DataSourceReference: utils.BuildReference(*image.Metadata.UUID, "image"),
+			if d.ImageSize > 0 {
+				newSize := int64(d.ImageSize * 1024)
+				n := &v3.VMDisk{
+					DataSourceReference: utils.BuildReference(*image.Metadata.UUID, "image"),
+					DiskSizeMib:         &newSize,
+				}
+				res.DiskList = append(res.DiskList, n)
+			} else {
+				n := &v3.VMDisk{
+					DataSourceReference: utils.BuildReference(*image.Metadata.UUID, "image"),
+				}
+				res.DiskList = append(res.DiskList, n)
 			}
 
-			res.DiskList = append(res.DiskList, n)
 			log.Infof("Image %s find with UUID: %s", *image.Status.Name, *image.Metadata.UUID)
 			break
 		}
@@ -201,7 +211,7 @@ func (d *NutanixDriver) Create() error {
 	if len(d.StorageContainer) != 0 && d.DiskSize > 0 {
 		n := &v3.VMDisk{
 			DiskSizeBytes: utils.Int64Ptr(int64(d.DiskSize) * 1024 * 1024 * 1024),
-			StorageConfig: &v3.VMStorageConfig {
+			StorageConfig: &v3.VMStorageConfig{
 				StorageContainerReference: &v3.StorageContainerReference{
 					Kind: "storage_container",
 					UUID: d.StorageContainer,
@@ -363,6 +373,12 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "NUTANIX_VM_IMAGE",
 			Name:   "nutanix-vm-image",
 			Usage:  "The name of the VM disk to clone from, for the newly created VM",
+		},
+		mcnflag.IntFlag{
+			EnvVar: "NUTANIX_VM_IMAGE_SIZE",
+			Name:   "nutanix-vm-image-size",
+			Usage:  "Increase the size of the template image",
+			Value:  0,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_CATEGORIES",
@@ -529,6 +545,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	if d.Image == "" {
 		return fmt.Errorf("nutanix-vm-image cannot be empty")
 	}
+	d.ImageSize = opts.Int("nutanix-vm-image-size")
 	return nil
 }
 
