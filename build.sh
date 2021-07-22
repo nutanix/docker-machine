@@ -1,2 +1,0 @@
-docker run --rm -it -v "$PWD":/usr/src/nutanix-docker-machine -w /usr/src/nutanix-docker-machine/machine golang:1.14 go build -v -o /usr/src/nutanix-docker-machine/docker-machine-driver-nutanix 
-sudo mv docker-machine-driver-nutanix /usr/local/bin
