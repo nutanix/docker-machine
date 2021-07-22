@@ -19,8 +19,9 @@ Features
 3. Ability to set a custom name for the newly created VM
 4. Ability to set the number of cores per vCPU
 5. Ability to specify the network(s) of the VM
-6. Ability to specify the disk in the VM by image name
+6. Ability to specify the template disk in the VM by image name and modify his size (increase only)
 7. Ability to specify categories to applied to the VM ( flow, leap, ...)
+8. Ability to add one additional disk by specifying disk-size and storage-container
 
 Driver Args
 -----------
@@ -35,6 +36,8 @@ Driver Args
 | `--nutanix-vm-cpus`            |The number of cpus in the newly created VM                               |no (default=2)    |
 | `--nutanix-vm-cores`           |The number of cores per vCPU                                             |no (default=1)    |
 | `--nutanix-vm-network`         |The network(s) to which the VM is attached to, support multiple network (separated by a comma)|yes               |
-| `--nutanix-vm-image`           |The name of the Image to clone from                                      |yes               |
+| `--nutanix-vm-image`           |The name of the Image we use as a template for the newly created VM      |yes               |
+| `--nutanix-vm-image-size`      |The new size of the Image we use as a template (in GiB)                  |no                |
 | `--nutanix-vm-categories`      |The name of the categories who will be applied to the newly created VM   |no                |
-
+| `--nutanix-disk-size`          |The size of the additional disk to add to the VM (in GiB)                |no                |
+| `--nutanix-storage-container`  |The storage container UUID of the additional disk to add to the VM       |no                |
