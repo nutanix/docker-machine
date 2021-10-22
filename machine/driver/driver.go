@@ -2,6 +2,7 @@ package driver
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 
 	"github.com/terraform-providers/terraform-provider-nutanix/client"
 	v3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
@@ -48,6 +50,7 @@ type NutanixDriver struct {
 	Categories       string
 	StorageContainer string
 	DiskSize         int
+	CloudInit        string
 }
 
 // NewDriver create new instance
@@ -240,8 +243,57 @@ func (d *NutanixDriver) Create() error {
 
 	// CloudInit preparation
 
-	// vmConfig.VMCustomizationConfig.DataSourceType = "CONFIG_DRIVE_V2"
-	userdata := []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
+	var userdata []byte
+
+	if d.CloudInit != "" {
+		t := yaml.Node{Kind: yaml.DocumentNode, HeadComment: "cloud-config"}
+
+		if !strings.HasPrefix(d.CloudInit, "#cloud-config") {
+			return errors.New("cloud-init syntax error")
+		}
+
+		err = yaml.Unmarshal([]byte(d.CloudInit), &t)
+		if err != nil {
+			log.Fatalf("Cloud-init syntax error: %v", err)
+			return err
+		}
+
+		if t.Content == nil {
+			log.Infof("Use default Cloud-init")
+			userdata = []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
+		} else {
+			log.Infof("Cloud-init merge")
+
+			usersNode := iterateNode(&t, "users")
+
+			if usersNode == nil {
+				rootNode := t.Content[0]
+				rootNode.Content = append(rootNode.Content, buildScalarNodes("users")...)
+				usersNode = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+				rootNode.Content = append(rootNode.Content, usersNode)
+			}
+
+			rancherNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+			rancherNode.Content = append(rancherNode.Content, buildStringNodes("name", "root", "")...)
+			rancherNode.Content = append(rancherNode.Content, buildStringNodes("sudo", "ALL=(ALL) NOPASSWD:ALL", "")...)
+			rancherNode.Content = append(rancherNode.Content, buildScalarNodes("ssh-authorized-keys")...)
+
+			sshSeqNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+			sshSeqNode.Content = append(sshSeqNode.Content, buildScalarNodes(string(pubKey))...)
+
+			rancherNode.Content = append(rancherNode.Content, sshSeqNode)
+			usersNode.Content = append(usersNode.Content, rancherNode)
+
+			userdata, err = yaml.Marshal(&t)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Infof(string(userdata))
+		}
+	} else {
+		log.Infof("Use default Cloud-init")
+		userdata = []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
+	}
 
 	cloudInit := &v3.GuestCustomizationCloudInit{
 		UserData: utils.StringPtr(base64.StdEncoding.EncodeToString(userdata)),
@@ -398,6 +450,11 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "The size of the attached disk",
 			Value:  0,
 		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_CLOUD_INIT",
+			Name:   "nutanix-cloud-init",
+			Usage:  "Cloud-init configuration",
+		},
 	}
 }
 
@@ -546,6 +603,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 		return fmt.Errorf("nutanix-vm-image cannot be empty")
 	}
 	d.ImageSize = opts.Int("nutanix-vm-image-size")
+	d.CloudInit = opts.String("nutanix-cloud-init")
 	return nil
 }
 
