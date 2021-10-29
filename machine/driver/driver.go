@@ -47,7 +47,7 @@ type NutanixDriver struct {
 	VMId             string
 	SessionAuth      bool
 	ProxyURL         string
-	Categories       string
+	Categories       []string
 	StorageContainer string
 	DiskSize         int
 	CloudInit        string
@@ -155,12 +155,12 @@ func (d *NutanixDriver) Create() error {
 		return fmt.Errorf("network %s not found in cluster %s", d.Subnet, d.Cluster)
 	}
 
-	if d.Categories != "" {
-		selectedCategories := strings.Split(d.Categories, ",")
+	if len(d.Categories) != 0 {
+		log.Infof("Categories provided: %s", d.Categories)
 		metadata.Categories = make(map[string]string)
 
-		for _, group := range selectedCategories {
-			category := strings.Split(group, ":")
+		for _, group := range d.Categories {
+			category := strings.Split(group, "=")
 
 			if len(category) < 2 {
 				log.Errorf("Malformed group %s", group)
@@ -432,11 +432,9 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Increase the size of the template image",
 			Value:  0,
 		},
-		mcnflag.StringFlag{
-			EnvVar: "NUTANIX_VM_CATEGORIES",
-			Name:   "nutanix-vm-categories",
-			Usage:  "The name of the categories who will be applied to the newly created VM",
-			Value:  "",
+		mcnflag.StringSliceFlag{
+			Name:  "nutanix-vm-categories",
+			Usage: "The name of the categories who will be applied to the newly created VM",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_STORAGE_CONTAINER",
@@ -581,7 +579,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 
 	d.Insecure = opts.Bool("nutanix-insecure")
 
-	d.Categories = opts.String("nutanix-vm-categories")
+	d.Categories = opts.StringSlice("nutanix-vm-categories")
 
 	d.Cluster = opts.String("nutanix-cluster")
 	if d.Cluster == "" {
