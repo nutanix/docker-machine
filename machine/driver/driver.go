@@ -423,7 +423,7 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.BoolFlag{
 			EnvVar: "NUTANIX_VM_CPU_PASSTHROUGH",
 			Name:   "nutanix-vm-cpu-passthrough",
-			Usage:  "Enable passthrough the host’s CPU features to the newly created VM",
+			Usage:  "Enable passthrough the host's CPU features to the newly created VM",
 		},
 		mcnflag.StringSliceFlag{
 			Name:  "nutanix-vm-network",
