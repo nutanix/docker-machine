@@ -39,6 +39,9 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 2. Click *Add Node Driver*.
 3. Complete the Add Node Driver form. Then click Create.
 
+![image](https://user-images.githubusercontent.com/180613/139591695-ec43a6e1-f351-4221-afda-90ae07961be4.png)
+
+
 Driver Args
 -----------
 |Arg                             |Description                                                              |Required          |Default |
