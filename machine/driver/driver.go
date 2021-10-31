@@ -39,6 +39,7 @@ type NutanixDriver struct {
 	Cluster          string
 	VMVCPUs          int
 	VMCores          int
+	VMCPUPassthrough bool
 	VMMem            int
 	SSHPass          string
 	Subnet           []string
@@ -94,6 +95,10 @@ func (d *NutanixDriver) Create() error {
 	res.MemorySizeMib = utils.Int64Ptr(int64(d.VMMem))
 	res.NumSockets = utils.Int64Ptr(int64(d.VMVCPUs))
 	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
+
+	if d.VMCPUPassthrough {
+		res.EnableCPUPassthrough = utils.BoolPtr(d.VMCPUPassthrough)
+	}
 
 	// Search target cluster
 	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
@@ -415,6 +420,11 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Number of cores per VCPU of the VM to be created",
 			Value:  defaultCores,
 		},
+		mcnflag.BoolFlag{
+			EnvVar: "NUTANIX_VM_CPU_PASSTHROUGH",
+			Name:   "nutanix-vm-cpu-passthrough",
+			Usage:  "Enable passthrough the host’s CPU features to the newly created VM",
+		},
 		mcnflag.StringSliceFlag{
 			Name:  "nutanix-vm-network",
 			Usage: "The name of the network to attach to the newly created VM",
@@ -590,6 +600,9 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.VMMem = opts.Int("nutanix-vm-mem")
 	d.VMVCPUs = opts.Int("nutanix-vm-cpus")
 	d.VMCores = opts.Int("nutanix-vm-cores")
+
+	d.VMCPUPassthrough = opts.Bool("nutanix-vm-cpu-passthrough")
+
 	d.Subnet = opts.StringSlice("nutanix-vm-network")
 	if len(d.Subnet) == 0 {
 		return fmt.Errorf("nutanix-vm-network cannot be empty")
