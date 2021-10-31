@@ -2,6 +2,7 @@ package driver
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 
 	"github.com/terraform-providers/terraform-provider-nutanix/client"
 	v3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
@@ -37,17 +39,19 @@ type NutanixDriver struct {
 	Cluster          string
 	VMVCPUs          int
 	VMCores          int
+	VMCPUPassthrough bool
 	VMMem            int
 	SSHPass          string
-	Subnet           string
+	Subnet           []string
 	Image            string
 	ImageSize        int
 	VMId             string
 	SessionAuth      bool
 	ProxyURL         string
-	Categories       string
+	Categories       []string
 	StorageContainer string
 	DiskSize         int
+	CloudInit        string
 }
 
 // NewDriver create new instance
@@ -92,6 +96,10 @@ func (d *NutanixDriver) Create() error {
 	res.NumSockets = utils.Int64Ptr(int64(d.VMVCPUs))
 	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
 
+	if d.VMCPUPassthrough {
+		res.EnableCPUPassthrough = utils.BoolPtr(d.VMCPUPassthrough)
+	}
+
 	// Search target cluster
 	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
 	clusters, err := conn.V3.ListAllCluster(clusterFilter)
@@ -110,16 +118,15 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search target subnet
-	selectedSubnets := strings.Split(d.Subnet, ",")
 
-	for index, subnet := range selectedSubnets {
+	for index, subnet := range d.Subnet {
 		// Trim extraneous whitespace
-		selectedSubnets[index] = strings.TrimSpace(subnet)
+		d.Subnet[index] = strings.TrimSpace(subnet)
 	}
 
 	subnetFilter := ""
 
-	for _, subnet := range selectedSubnets {
+	for _, subnet := range d.Subnet {
 		if len(subnetFilter) != 0 {
 			subnetFilter += ","
 		}
@@ -133,7 +140,7 @@ func (d *NutanixDriver) Create() error {
 		return err
 	}
 
-	for _, query := range selectedSubnets {
+	for _, query := range d.Subnet {
 		for _, subnet := range subnets.Entities {
 			if *subnet.Status.Name == query && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
 				n := &v3.VMNic{
@@ -152,12 +159,12 @@ func (d *NutanixDriver) Create() error {
 		return fmt.Errorf("network %s not found in cluster %s", d.Subnet, d.Cluster)
 	}
 
-	if d.Categories != "" {
-		selectedCategories := strings.Split(d.Categories, ",")
+	if len(d.Categories) != 0 {
+		log.Infof("Categories provided: %s", d.Categories)
 		metadata.Categories = make(map[string]string)
 
-		for _, group := range selectedCategories {
-			category := strings.Split(group, ":")
+		for _, group := range d.Categories {
+			category := strings.Split(group, "=")
 
 			if len(category) < 2 {
 				log.Errorf("Malformed group %s", group)
@@ -240,8 +247,57 @@ func (d *NutanixDriver) Create() error {
 
 	// CloudInit preparation
 
-	// vmConfig.VMCustomizationConfig.DataSourceType = "CONFIG_DRIVE_V2"
-	userdata := []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
+	var userdata []byte
+
+	if d.CloudInit != "" {
+		t := yaml.Node{Kind: yaml.DocumentNode, HeadComment: "cloud-config"}
+
+		if !strings.HasPrefix(d.CloudInit, "#cloud-config") {
+			return errors.New("cloud-init syntax error")
+		}
+
+		err = yaml.Unmarshal([]byte(d.CloudInit), &t)
+		if err != nil {
+			log.Fatalf("Cloud-init syntax error: %v", err)
+			return err
+		}
+
+		if t.Content == nil {
+			log.Infof("Use default Cloud-init")
+			userdata = []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
+		} else {
+			log.Infof("Cloud-init merge")
+
+			usersNode := iterateNode(&t, "users")
+
+			if usersNode == nil {
+				rootNode := t.Content[0]
+				rootNode.Content = append(rootNode.Content, buildScalarNodes("users")...)
+				usersNode = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+				rootNode.Content = append(rootNode.Content, usersNode)
+			}
+
+			rancherNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+			rancherNode.Content = append(rancherNode.Content, buildStringNodes("name", "root", "")...)
+			rancherNode.Content = append(rancherNode.Content, buildStringNodes("sudo", "ALL=(ALL) NOPASSWD:ALL", "")...)
+			rancherNode.Content = append(rancherNode.Content, buildScalarNodes("ssh-authorized-keys")...)
+
+			sshSeqNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+			sshSeqNode.Content = append(sshSeqNode.Content, buildScalarNodes(string(pubKey))...)
+
+			rancherNode.Content = append(rancherNode.Content, sshSeqNode)
+			usersNode.Content = append(usersNode.Content, rancherNode)
+
+			userdata, err = yaml.Marshal(&t)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Infof(string(userdata))
+		}
+	} else {
+		log.Infof("Use default Cloud-init")
+		userdata = []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
+	}
 
 	cloudInit := &v3.GuestCustomizationCloudInit{
 		UserData: utils.StringPtr(base64.StdEncoding.EncodeToString(userdata)),
@@ -364,10 +420,14 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Number of cores per VCPU of the VM to be created",
 			Value:  defaultCores,
 		},
-		mcnflag.StringFlag{
-			EnvVar: "NUTANIX_VM_NETWORK",
-			Name:   "nutanix-vm-network",
-			Usage:  "The name of the network to attach to the newly created VM",
+		mcnflag.BoolFlag{
+			EnvVar: "NUTANIX_VM_CPU_PASSTHROUGH",
+			Name:   "nutanix-vm-cpu-passthrough",
+			Usage:  "Enable passthrough the host's CPU features to the newly created VM",
+		},
+		mcnflag.StringSliceFlag{
+			Name:  "nutanix-vm-network",
+			Usage: "The name of the network to attach to the newly created VM",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_IMAGE",
@@ -380,11 +440,9 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Increase the size of the template image",
 			Value:  0,
 		},
-		mcnflag.StringFlag{
-			EnvVar: "NUTANIX_VM_CATEGORIES",
-			Name:   "nutanix-vm-categories",
-			Usage:  "The name of the categories who will be applied to the newly created VM",
-			Value:  "",
+		mcnflag.StringSliceFlag{
+			Name:  "nutanix-vm-categories",
+			Usage: "The name of the categories who will be applied to the newly created VM",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_STORAGE_CONTAINER",
@@ -397,6 +455,11 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "nutanix-disk-size",
 			Usage:  "The size of the attached disk",
 			Value:  0,
+		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_CLOUD_INIT",
+			Name:   "nutanix-cloud-init",
+			Usage:  "Cloud-init configuration",
 		},
 	}
 }
@@ -524,7 +587,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 
 	d.Insecure = opts.Bool("nutanix-insecure")
 
-	d.Categories = opts.String("nutanix-vm-categories")
+	d.Categories = opts.StringSlice("nutanix-vm-categories")
 
 	d.Cluster = opts.String("nutanix-cluster")
 	if d.Cluster == "" {
@@ -537,8 +600,11 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.VMMem = opts.Int("nutanix-vm-mem")
 	d.VMVCPUs = opts.Int("nutanix-vm-cpus")
 	d.VMCores = opts.Int("nutanix-vm-cores")
-	d.Subnet = opts.String("nutanix-vm-network")
-	if d.Subnet == "" {
+
+	d.VMCPUPassthrough = opts.Bool("nutanix-vm-cpu-passthrough")
+
+	d.Subnet = opts.StringSlice("nutanix-vm-network")
+	if len(d.Subnet) == 0 {
 		return fmt.Errorf("nutanix-vm-network cannot be empty")
 	}
 	d.Image = opts.String("nutanix-vm-image")
@@ -546,6 +612,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 		return fmt.Errorf("nutanix-vm-image cannot be empty")
 	}
 	d.ImageSize = opts.Int("nutanix-vm-image-size")
+	d.CloudInit = opts.String("nutanix-cloud-init")
 	return nil
 }
 
