@@ -41,7 +41,7 @@ type NutanixDriver struct {
 	VMCores          int
 	VMMem            int
 	SSHPass          string
-	Subnet           string
+	Subnet           []string
 	Image            string
 	ImageSize        int
 	VMId             string
@@ -113,16 +113,15 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search target subnet
-	selectedSubnets := strings.Split(d.Subnet, ",")
 
-	for index, subnet := range selectedSubnets {
+	for index, subnet := range d.Subnet {
 		// Trim extraneous whitespace
-		selectedSubnets[index] = strings.TrimSpace(subnet)
+		d.Subnet[index] = strings.TrimSpace(subnet)
 	}
 
 	subnetFilter := ""
 
-	for _, subnet := range selectedSubnets {
+	for _, subnet := range d.Subnet {
 		if len(subnetFilter) != 0 {
 			subnetFilter += ","
 		}
@@ -136,7 +135,7 @@ func (d *NutanixDriver) Create() error {
 		return err
 	}
 
-	for _, query := range selectedSubnets {
+	for _, query := range d.Subnet {
 		for _, subnet := range subnets.Entities {
 			if *subnet.Status.Name == query && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
 				n := &v3.VMNic{
@@ -416,10 +415,9 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Number of cores per VCPU of the VM to be created",
 			Value:  defaultCores,
 		},
-		mcnflag.StringFlag{
-			EnvVar: "NUTANIX_VM_NETWORK",
-			Name:   "nutanix-vm-network",
-			Usage:  "The name of the network to attach to the newly created VM",
+		mcnflag.StringSliceFlag{
+			Name:  "nutanix-vm-network",
+			Usage: "The name of the network to attach to the newly created VM",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "NUTANIX_VM_IMAGE",
@@ -592,8 +590,8 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.VMMem = opts.Int("nutanix-vm-mem")
 	d.VMVCPUs = opts.Int("nutanix-vm-cpus")
 	d.VMCores = opts.Int("nutanix-vm-cores")
-	d.Subnet = opts.String("nutanix-vm-network")
-	if d.Subnet == "" {
+	d.Subnet = opts.StringSlice("nutanix-vm-network")
+	if len(d.Subnet) == 0 {
 		return fmt.Errorf("nutanix-vm-network cannot be empty")
 	}
 	d.Image = opts.String("nutanix-vm-image")
