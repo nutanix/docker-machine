@@ -50,23 +50,24 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 
 Driver Args
 -----------
-|Arg                             |Description                                                              |Required          |Default |
-|--------------------------------|:------------------------------------------------------------------------|:-----------------|--------|
-| `--nutanix-endpoint`           |The hostname/ip-address of the Prism Central                             |yes               ||
-| `--nutanix-username`           |The username of the nutanix management account                           |yes               ||
-| `--nutanix-password`           |The password of the nutanix management account                           |yes               ||
-| `--nutanix-insecure`           |Set to true to force SSL insecure connection                             |no                |false|
-| `--nutanix-cluster`            |The name of the cluster where deploy the VM (case sensitive)             |yes               ||
-| `--nutanix-vm-mem`             |The amount of RAM of the newly created VM (MB)                           |no                | 2 GB|
-| `--nutanix-vm-cpus`            |The number of cpus in the newly created VM (core)                        |no                | 2|
-| `--nutanix-vm-cores`           |The number of cores per vCPU                                             |no                | 1|
-| `--nutanix-vm-network`         |The network(s) to which the VM is attached to                            |yes               ||
-| `--nutanix-vm-image`           |The name of the Image we use as a template for the newly created VM      |yes               ||
-| `--nutanix-vm-image-size`      |The new size of the Image we use as a template (in GiB)                  |no                ||
-| `--nutanix-vm-categories`      |The name of the categories who will be applied to the newly created VM   |no                ||
-| `--nutanix-disk-size`          |The size of the additional disk to add to the VM (in GiB)                |no                ||
-| `--nutanix-storage-container`  |The storage container UUID of the additional disk to add to the VM       |no                ||
-| `--nutanix-vm-cpu-passthrough` |Enable passthrough the host's CPU features to the newly created VM       |no                |false|
+|Arg                           |Description                                                              |Required          |Default |
+|------------------------------|:------------------------------------------------------------------------|:-----------------|--------|
+| `nutanix-endpoint`           |The hostname/ip-address of the Prism Central                             |yes               ||
+| `nutanix-username`           |The username of the nutanix management account                           |yes               ||
+| `nutanix-password`           |The password of the nutanix management account                           |yes               ||
+| `nutanix-insecure`           |Set to true to force SSL insecure connection                             |no                |false|
+| `nutanix-cluster`            |The name of the cluster where deploy the VM (case sensitive)             |yes               ||
+| `nutanix-vm-mem`             |The amount of RAM of the newly created VM (MB)                           |no                | 2 GB|
+| `nutanix-vm-cpus`            |The number of cpus in the newly created VM (core)                        |no                | 2|
+| `nutanix-vm-cores`           |The number of cores per vCPU                                             |no                | 1|
+| `nutanix-vm-network`         |The network(s) to which the VM is attached to                            |yes               ||
+| `nutanix-vm-image`           |The name of the Image template we use for the newly created VM (must support cloud-init)|yes               ||
+| `nutanix-vm-image-size`      |The new size of the Image we use as a template (in GiB)                  |no                ||
+| `nutanix-vm-categories`      |The name of the categories who will be applied to the newly created VM   |no                ||
+| `nutanix-disk-size`          |The size of the additional disk to add to the VM (in GiB)                |no                ||
+| `nutanix-storage-container`  |The storage container UUID of the additional disk to add to the VM       |no                ||
+| `nutanix-cloud-init`         |Cloud-init to provide to the VM (will be patched with rancher root user) |no                ||
+| `nutanix-vm-cpu-passthrough` |Enable passthrough the host's CPU features to the newly created VM       |no                |false|
 
 Build Instructions
 --------------------
