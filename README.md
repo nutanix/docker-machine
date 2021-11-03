@@ -59,6 +59,7 @@ Driver Args
 |Arg                           |Description                                                              |Required          |Default |
 |------------------------------|:------------------------------------------------------------------------|:-----------------|--------|
 | `nutanix-endpoint`           |The hostname/ip-address of the Prism Central                             |yes               ||
+| `nutanix-port`               |The port to connect to Prism Central                                     |no                |9440
 | `nutanix-username`           |The username of the nutanix management account                           |yes               ||
 | `nutanix-password`           |The password of the nutanix management account                           |yes               ||
 | `nutanix-insecure`           |Set to true to force SSL insecure connection                             |no                |false|
