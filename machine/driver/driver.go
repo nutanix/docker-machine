@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -101,7 +102,9 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search target cluster
-	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
+	c := &url.URL{Path: d.Cluster}
+	encodedCluster := c.String()
+	clusterFilter := fmt.Sprintf("name==%s", encodedCluster)
 	clusters, err := conn.V3.ListAllCluster(clusterFilter)
 	if err != nil {
 		log.Errorf("Error getting clusters: [%v]", err)
@@ -131,7 +134,9 @@ func (d *NutanixDriver) Create() error {
 			subnetFilter += ","
 		}
 
-		subnetFilter += fmt.Sprintf("name==%s", subnet)
+		t := &url.URL{Path: subnet}
+		encodedSubnet := t.String()
+		subnetFilter += fmt.Sprintf("name==%s", encodedSubnet)
 	}
 
 	subnets, err := conn.V3.ListAllSubnet(subnetFilter)
@@ -181,7 +186,9 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search image template
-	imageFilter := fmt.Sprintf("name==%s", d.Image)
+	i := &url.URL{Path: d.Image}
+	encodedImage := i.String()
+	imageFilter := fmt.Sprintf("name==%s", encodedImage)
 	images, err := conn.V3.ListAllImage(imageFilter)
 	if err != nil {
 		log.Errorf("Error getting images: [%v]", err)
