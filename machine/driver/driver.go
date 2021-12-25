@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -131,7 +132,9 @@ func (d *NutanixDriver) Create() error {
 			subnetFilter += ","
 		}
 
-		subnetFilter += fmt.Sprintf("name==%s", subnet)
+		t := &url.URL{Path: subnet}
+		encodedSubnet := t.String()
+		subnetFilter += fmt.Sprintf("name==%s", encodedSubnet)
 	}
 
 	subnets, err := conn.V3.ListAllSubnet(subnetFilter)
