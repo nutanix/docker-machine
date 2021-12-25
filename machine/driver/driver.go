@@ -102,7 +102,9 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search target cluster
-	clusterFilter := fmt.Sprintf("name==%s", d.Cluster)
+	c := &url.URL{Path: d.Cluster}
+	encodedCluster := c.String()
+	clusterFilter := fmt.Sprintf("name==%s", encodedCluster)
 	clusters, err := conn.V3.ListAllCluster(clusterFilter)
 	if err != nil {
 		log.Errorf("Error getting clusters: [%v]", err)
