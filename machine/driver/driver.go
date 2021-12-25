@@ -184,7 +184,9 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search image template
-	imageFilter := fmt.Sprintf("name==%s", d.Image)
+	i := &url.URL{Path: d.Image}
+	encodedImage := i.String()
+	imageFilter := fmt.Sprintf("name==%s", encodedImage)
 	images, err := conn.V3.ListAllImage(imageFilter)
 	if err != nil {
 		log.Errorf("Error getting images: [%v]", err)
