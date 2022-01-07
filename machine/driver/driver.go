@@ -198,6 +198,13 @@ func (d *NutanixDriver) Create() error {
 	for _, image := range images.Entities {
 		if *image.Status.Name == d.Image {
 
+			log.Infof("Image %s find with UUID: %s", *image.Status.Name, *image.Metadata.UUID)
+
+			if *image.Status.Resources.ImageType != "DISK_IMAGE" {
+				log.Errorf("Image %s is not a disk template", d.Image)
+				return fmt.Errorf("image %s is not a disk template", d.Image)
+			}
+
 			if d.ImageSize > 0 {
 				newSize := int64(d.ImageSize * 1024)
 				n := &v3.VMDisk{
@@ -212,7 +219,6 @@ func (d *NutanixDriver) Create() error {
 				res.DiskList = append(res.DiskList, n)
 			}
 
-			log.Infof("Image %s find with UUID: %s", *image.Status.Name, *image.Metadata.UUID)
 			break
 		}
 	}
@@ -222,6 +228,7 @@ func (d *NutanixDriver) Create() error {
 		return fmt.Errorf("image %s not found", d.Image)
 	}
 
+	// Add additional disks
 	if len(d.StorageContainer) != 0 && d.DiskSize > 0 {
 		n := &v3.VMDisk{
 			DiskSizeBytes: utils.Int64Ptr(int64(d.DiskSize) * 1024 * 1024 * 1024),
