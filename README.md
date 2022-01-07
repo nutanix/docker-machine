@@ -39,7 +39,7 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 2. Click *Add Node Driver*.
 3. Complete the Add Node Driver form. Then click Create.
 
-    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.0.1/docker-machine-driver-nutanix_v3.0.1_linux`  
+    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.1.0/docker-machine-driver-nutanix_v3.1.0_linux`  
     - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.0.0/component.js`  
     - *Whitelist Domains*: `nutanix.github.io`  
       
@@ -68,7 +68,7 @@ Driver Args
 | `nutanix-vm-cpus`            |The number of cpus in the newly created VM (core)                        |no                | 2|
 | `nutanix-vm-cores`           |The number of cores per vCPU                                             |no                | 1|
 | `nutanix-vm-network`         |The network(s) to which the VM is attached to                            |yes               ||
-| `nutanix-vm-image`           |The name of the Image template we use for the newly created VM (must support cloud-init)|yes               ||
+| `nutanix-vm-image`           |The name of the Disk Image template we use for the newly created VM (must support cloud-init)|yes               ||
 | `nutanix-vm-image-size`      |The new size of the Image we use as a template (in GiB)                  |no                ||
 | `nutanix-vm-categories`      |The name of the categories who will be applied to the newly created VM   |no                ||
 | `nutanix-disk-size`          |The size of the additional disk to add to the VM (in GiB)                |no                ||
