@@ -53,6 +53,7 @@ type NutanixDriver struct {
 	StorageContainer string
 	DiskSize         int
 	CloudInit        string
+	SerialPort       bool
 }
 
 // NewDriver create new instance
@@ -99,6 +100,15 @@ func (d *NutanixDriver) Create() error {
 
 	if d.VMCPUPassthrough {
 		res.EnableCPUPassthrough = utils.BoolPtr(d.VMCPUPassthrough)
+	}
+
+	if d.SerialPort {
+		SerialPort := &v3.VMSerialPort{
+			Index:       utils.Int64Ptr(0),
+			IsConnected: utils.BoolPtr(true),
+		}
+
+		res.SerialPortList = append(res.SerialPortList, SerialPort)
 	}
 
 	// Search target cluster
@@ -475,6 +485,11 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "nutanix-cloud-init",
 			Usage:  "Cloud-init configuration",
 		},
+		mcnflag.BoolFlag{
+			EnvVar: "NUTANIX_VM_SERIAL_PORT",
+			Name:   "nutanix-vm-serial-port",
+			Usage:  "Attach a serial port to the newly created VM (type Null)",
+		},
 	}
 }
 
@@ -627,6 +642,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	}
 	d.ImageSize = opts.Int("nutanix-vm-image-size")
 	d.CloudInit = opts.String("nutanix-cloud-init")
+	d.SerialPort = opts.Bool("nutanix-vm-serial-port")
 	return nil
 }
 
