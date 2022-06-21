@@ -10,12 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"nutanix/utils"
-
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
+	"github.com/nutanix/docker-machine/utils"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
