@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/docker/machine/libmachine/drivers/plugin"
-	nutanix "nutanix/machine/driver"
+	"github.com/nutanix/docker-machine/machine/driver"
 )
 
 func main() {
-	plugin.RegisterDriver(nutanix.NewDriver("", ""))
+	plugin.RegisterDriver(driver.NewDriver("", ""))
 }
