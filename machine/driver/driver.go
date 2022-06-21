@@ -19,8 +19,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/terraform-providers/terraform-provider-nutanix/client"
-	v3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
+	client "github.com/nutanix-cloud-native/prism-go-client/pkg/nutanix"
+	v3 "github.com/nutanix-cloud-native/prism-go-client/pkg/nutanix/v3"
 )
 
 const (
@@ -149,7 +149,7 @@ func (d *NutanixDriver) Create() error {
 		subnetFilter += fmt.Sprintf("name==%s", encodedSubnet)
 	}
 
-	subnets, err := conn.V3.ListAllSubnet(subnetFilter)
+	subnets, err := conn.V3.ListAllSubnet(subnetFilter, getEmptyClientSideFilter())
 	if err != nil {
 		log.Errorf("Error getting subnets: [%v]", err)
 		return err
@@ -748,4 +748,8 @@ func (d *NutanixDriver) Stop() error {
 		return err
 	}
 	return fmt.Errorf("unable to Stop VM %s", name)
+}
+
+func getEmptyClientSideFilter() []*client.AdditionalFilter {
+	return make([]*client.AdditionalFilter, 0)
 }
