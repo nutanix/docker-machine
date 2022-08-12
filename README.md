@@ -71,6 +71,7 @@ Driver Args
 | `nutanix-vm-image`           | The name of the Disk Image template we use for the newly created VM (must support cloud-init) | yes      |         |
 | `nutanix-vm-image-size`      | The new size of the Image we use as a template (in GiB)                                       | no       |         |
 | `nutanix-vm-categories`      | The name of the categories who will be applied to the newly created VM                        | no       |         |
+| `nutanix-project`            | The name of the project where deploy the VM (default if empty)                                | no       | default |
 | `nutanix-disk-size`          | The size of the additional disk to add to the VM (in GiB)                                     | no       |         |
 | `nutanix-storage-container`  | The storage container UUID of the additional disk to add to the VM                            | no       |         |
 | `nutanix-cloud-init`         | Cloud-init to provide to the VM (will be patched with rancher root user)                      | no       |         |

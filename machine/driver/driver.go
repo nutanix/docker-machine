@@ -53,6 +53,7 @@ type NutanixDriver struct {
 	DiskSize         int
 	CloudInit        string
 	SerialPort       bool
+	Project          string
 }
 
 // NewDriver create new instance
@@ -97,10 +98,12 @@ func (d *NutanixDriver) Create() error {
 	res.NumSockets = utils.Int64Ptr(int64(d.VMVCPUs))
 	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
 
+	// Configure CPU Passthrough
 	if d.VMCPUPassthrough {
 		res.EnableCPUPassthrough = utils.BoolPtr(d.VMCPUPassthrough)
 	}
 
+	// Add Serial Port
 	if d.SerialPort {
 		SerialPort := &v3.VMSerialPort{
 			Index:       utils.Int64Ptr(0),
@@ -108,6 +111,32 @@ func (d *NutanixDriver) Create() error {
 		}
 
 		res.SerialPortList = append(res.SerialPortList, SerialPort)
+	}
+
+	// Assign to project
+	if d.Project != "" {
+
+		projectFilter := fmt.Sprintf("name==%s", d.Project)
+		projects, err := conn.V3.ListAllProject(projectFilter)
+		if err != nil {
+			return err
+		}
+
+		if len(projects.Entities) == 0 {
+			log.Infof("Project %s not found", d.Project)
+			return fmt.Errorf("project %s not found", d.Project)
+		} else if len(projects.Entities) > 1 {
+			log.Infof("Multiple projects found with name %s", d.Project)
+			return fmt.Errorf("multiple projects found with name %s", d.Project)
+		}
+
+		log.Infof("Select project %s", projects.Entities[0].Status.Name)
+
+		metadata.ProjectReference = &v3.Reference{
+			Kind: utils.StringPtr("project"),
+			UUID: projects.Entities[0].Metadata.UUID,
+		}
+
 	}
 
 	// Search target cluster
@@ -378,8 +407,9 @@ waitTask:
 			log.Infof("VM %s creation task succeeded", name)
 			break waitTask
 		case "FAILED":
-			log.Errorf("Error creating vm: [%v]", *resp.ErrorDetail)
-			return errors.New(*resp.ErrorDetail)
+			errMsg := strings.ReplaceAll(*resp.ErrorDetail, "\n", " ")
+			log.Errorf("Error creating vm: [%v]", errMsg)
+			return errors.New(errMsg)
 		}
 		if i == 59 {
 			log.Errorf("Timeout waiting for vm %s to create", name)
@@ -552,6 +582,12 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "nutanix-vm-serial-port",
 			Usage:  "Attach a serial port to the newly created VM (type Null)",
 		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_PROJECT",
+			Name:   "nutanix-project",
+			Usage:  "The name of the project to assign the VM",
+			Value:  "",
+		},
 	}
 }
 
@@ -705,6 +741,7 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.ImageSize = opts.Int("nutanix-vm-image-size")
 	d.CloudInit = opts.String("nutanix-cloud-init")
 	d.SerialPort = opts.Bool("nutanix-vm-serial-port")
+	d.Project = opts.String("nutanix-project")
 	return nil
 }
 
