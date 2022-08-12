@@ -111,23 +111,35 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Search target cluster
+
 	c := &url.URL{Path: d.Cluster}
 	encodedCluster := c.String()
 	clusterFilter := fmt.Sprintf("name==%s", encodedCluster)
+
 	clusters, err := conn.V3.ListAllCluster(clusterFilter)
 	if err != nil {
 		log.Errorf("Error getting clusters: [%v]", err)
 		return err
 	}
 
-	for _, cluster := range clusters.Entities {
-		if *cluster.Status.Name == d.Cluster {
+	// Validate filtered Clusters
 
-			log.Infof("Cluster %s find with UUID: %s", *cluster.Status.Name, *cluster.Metadata.UUID)
-			spec.ClusterReference = utils.BuildReference(*cluster.Metadata.UUID, "cluster")
-			break
+	foundClusters := make([]*v3.ClusterIntentResponse, 0)
+	for _, s := range clusters.Entities {
+		peSpec := s.Spec
+		if *peSpec.Name == d.Cluster {
+			foundClusters = append(foundClusters, s)
 		}
 	}
+
+	if len(foundClusters) == 0 {
+		return fmt.Errorf("failed to retrieve cluster %s", d.Cluster)
+	} else if len(foundClusters) > 1 {
+		return fmt.Errorf("more than one Cluster found with name %s", d.Cluster)
+	}
+
+	log.Infof("Cluster %s find with UUID: %s", *foundClusters[0].Status.Name, *foundClusters[0].Metadata.UUID)
+	spec.ClusterReference = utils.BuildReference(*foundClusters[0].Metadata.UUID, "cluster")
 
 	// Search target subnet
 
