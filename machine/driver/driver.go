@@ -4,9 +4,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -260,7 +260,7 @@ func (d *NutanixDriver) Create() error {
 		return err
 	}
 
-	pubKey, err := ioutil.ReadFile(fmt.Sprintf("%s.pub", d.GetSSHKeyPath()))
+	pubKey, err := os.ReadFile(fmt.Sprintf("%s.pub", d.GetSSHKeyPath()))
 	if err != nil {
 		log.Errorf("Error reading public key")
 		return err
@@ -350,20 +350,59 @@ func (d *NutanixDriver) Create() error {
 	uuid := *resp.Metadata.UUID
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
 
-	log.Infof("waiting for vm (%s) to create: %s", uuid, taskUUID)
+	log.Infof("waiting for vm %s (%s) to create: task %s", name, uuid, taskUUID)
+
+	// Wait end of the task
+waitTask:
+	for i := 0; i < 60; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil {
+			log.Errorf("Error getting task: [%v]", err)
+			return err
+		}
+
+		switch *resp.Status {
+		case "SUCCEEDED":
+			log.Infof("VM %s creation task succeeded", name)
+			break waitTask
+		case "FAILED":
+			log.Errorf("Error creating vm: [%v]", *resp.ErrorDetail)
+			return errors.New(*resp.ErrorDetail)
+		}
+		if i == 59 {
+			log.Errorf("Timeout waiting for vm %s to create", name)
+			return errors.New("timeout waiting for vm to create")
+		}
+		log.Infof("VM %s creation is in %s state", name, *resp.Status)
+		<-time.After(5 * time.Second)
+
+	}
 
 	// Wait for the VM to be available
 	for i := 0; i < 60; i++ {
 		vmIntent, err := conn.V3.GetVM(uuid)
-		minDisks := len(spec.Resources.DiskList) + 1
-		log.Infof("Waiting until at least %d disks are present...", minDisks)
+		if err != nil {
+			log.Errorf("Error getting vm: [%v]", err)
+			return err
+		}
 
-		if err != nil || len(vmIntent.Spec.Resources.DiskList) < (minDisks) {
-			log.Infof("Waiting VM %s creation", name)
+		nbDisks := len(spec.Resources.DiskList) + 1
+
+		log.Infof("Waiting until at least %d disks are present...", nbDisks)
+
+		if len(vmIntent.Spec.Resources.DiskList) == nbDisks {
+			break
+		}
+
+		if i == 59 {
+			log.Errorf("Timeout waiting for vm %s to be available", name)
+			return errors.New("timeout waiting for vm to be available")
+		} else {
+			log.Infof("Waiting VM %s availability", name)
 			<-time.After(5 * time.Second)
 			continue
 		}
-		break
+
 	}
 	d.VMId = uuid
 
@@ -372,15 +411,27 @@ func (d *NutanixDriver) Create() error {
 	// Wait for the VM obtain an IP address
 	for i := 0; i < 60; i++ {
 		vmInfo, err := conn.V3.GetVM(uuid)
-		if err != nil || len(vmInfo.Status.Resources.NicList[0].IPEndpointList) == (0) {
+		if err != nil {
+			log.Errorf("Error getting vm: [%v]", err)
+			return err
+		}
+
+		if len(vmInfo.Status.Resources.NicList[0].IPEndpointList) != 0 {
+			d.IPAddress = *vmInfo.Status.Resources.NicList[0].IPEndpointList[0].IP
+			break
+		}
+
+		if i == 59 {
+			log.Errorf("Timeout waiting for vm %s to obtain an IP address", name)
+			return errors.New("timeout waiting for vm to obtain an IP address")
+		} else {
 			log.Infof("Waiting VM %s ip configuration", name)
 			<-time.After(5 * time.Second)
 			continue
 		}
-		d.IPAddress = *vmInfo.Status.Resources.NicList[0].IPEndpointList[0].IP
-		log.Infof("VM %s configured with ip address %s", name, d.IPAddress)
-		break
 	}
+
+	log.Infof("VM %s configured with ip address %s", name, d.IPAddress)
 
 	return nil
 }
