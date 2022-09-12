@@ -46,13 +46,13 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
     
     *whitelist is mandatory and need to be changed if you relocate the UI driver*
 
-![image](https://user-images.githubusercontent.com/180613/139593826-9d48bc40-29c0-42cb-8122-0e95304eeac8.png)
+![Screenshot 2022-09-12 at 08 03 21](https://user-images.githubusercontent.com/180613/189584453-85659960-905a-41d3-83d7-fe7f704cd90a.png)
+
 
 4. Wait for the driver to become "Active"
 5. Go to *RKE1 Configuration > Node Templates*, your can create a Nutanix Template and custom UI should show up.
 
-![image](https://user-images.githubusercontent.com/180613/139594240-db4f375f-5918-4918-b1be-4aa8e4232f0f.png)
-
+![Screenshot 2022-09-12 at 08 05 40](https://user-images.githubusercontent.com/180613/189584478-cf62d252-2191-4944-a8b5-5221ad66ce75.png)
 
 
 ## Driver Args
