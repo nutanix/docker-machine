@@ -16,8 +16,8 @@ This repository contains the Rancher Node Driver for Nutanix. Nutanix Node drive
 
 ---
 
-Features
----------
+## Features
+
 
 1. Ability to select VM's Main Memory in Megabytes
 2. Ability to select VM's vCPU count
@@ -30,8 +30,8 @@ Features
 9. Enable passthrough the host's CPU features to the newly created VM
 
 
-Installation
---------------------
+## Installation
+
 
 If you want to use Nutanix Node Driver, you need add it in order to start using them to create node templates and eventually node pools for your Kubernetes cluster.
 
@@ -39,10 +39,11 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 2. Click *Add Node Driver*.
 3. Complete the Add Node Driver form. Then click Create.
 
-    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.1.0/docker-machine-driver-nutanix_v3.1.0_linux`  
-    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.1.0/component.js`  
+    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.1.0/docker-machine-driver-nutanix_v3.3.0_linux`  
+    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.3.0/component.js`  
     - *Whitelist Domains*: `nutanix.github.io`  
       
+    
     *whitelist is mandatory and need to be changed if you relocate the UI driver*
 
 ![image](https://user-images.githubusercontent.com/180613/139593826-9d48bc40-29c0-42cb-8122-0e95304eeac8.png)
@@ -54,8 +55,8 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 
 
 
-Driver Args
------------
+## Driver Args
+
 | Arg                          | Description                                                                                   | Required | Default |
 |------------------------------|:----------------------------------------------------------------------------------------------|:---------|---------|
 | `nutanix-endpoint`           | The hostname/ip-address of the Prism Central                                                  | yes      |         |
@@ -78,11 +79,27 @@ Driver Args
 | `nutanix-vm-cpu-passthrough` | Enable passthrough the host's CPU features to the newly created VM                            | no       | false   |
 | `nutanix-vm-serial-port`     | Attach a serial port to the newly created VM                                                  | no       | false   |
 
-Build Instructions
---------------------
 
-build linux/amd64 binary => `make`  
+
+## Project support
+
+Starting `v3.3.0` the Rancher Node driver implements Nutanix Project support. The  prerequisite needed to be able to use the Rancher Node Driver is the following:
+- Target cluster and network available in the Project
+- Role with the following recommended permission:
+  - VM Full Access
+  - Cluster View Access
+  - Image View Only
+
+
+
+
+## Development
+
+### Build Instructions
+
+build linux/amd64 binary => `make` 
 build local binary => `make local`
+
 ## History
 
 * v1 is the original Nutanix docker machine driver that connect to Prism Element
