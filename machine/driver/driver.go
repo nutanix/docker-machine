@@ -14,6 +14,7 @@ import (
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
+	"github.com/google/uuid"
 	"github.com/nutanix/docker-machine/utils"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -387,8 +388,16 @@ func (d *NutanixDriver) Create() error {
 		userdata = []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
 	}
 
+	// Generate metadata for the VM
+	specUUID := uuid.New()
+	cloudMetadata := fmt.Sprintf("{\"hostname\": \"%s\", \"uuid\": \"%s\"}", name, specUUID)
+
+	// Encode the metadata by base64
+	metadataEncoded := base64.StdEncoding.EncodeToString([]byte(cloudMetadata))
+
 	cloudInit := &v3.GuestCustomizationCloudInit{
 		UserData: utils.StringPtr(base64.StdEncoding.EncodeToString(userdata)),
+		MetaData: utils.StringPtr(metadataEncoded),
 	}
 
 	guestCustomization := &v3.GuestCustomization{
@@ -399,7 +408,7 @@ func (d *NutanixDriver) Create() error {
 
 	metadata.Kind = utils.StringPtr("vm")
 	spec.Name = utils.StringPtr(name)
-	spec.Description = utils.StringPtr("VM created by docker-image")
+	spec.Description = utils.StringPtr("VM created by Nutanix Rancher Node Driver")
 	res.PowerState = utils.StringPtr("ON")
 	spec.Resources = res
 	request.Metadata = metadata

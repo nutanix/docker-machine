@@ -6,6 +6,7 @@ replace github.com/docker/docker => github.com/docker/engine v17.12.0-ce-rc1.0.2
 
 require (
 	github.com/docker/machine v0.16.2
+	github.com/google/uuid v1.3.1
 	github.com/nutanix-cloud-native/prism-go-client v0.2.0
 	github.com/sirupsen/logrus v1.9.3
 	gopkg.in/yaml.v3 v3.0.1
