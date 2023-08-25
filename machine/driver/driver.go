@@ -141,6 +141,8 @@ func (d *NutanixDriver) Create() error {
 
 	// Search target cluster
 
+	log.Infof("Searching cluster %s", d.Cluster)
+
 	c := &url.URL{Path: d.Cluster}
 	encodedCluster := c.String()
 	clusterFilter := fmt.Sprintf("name==%s", encodedCluster)
@@ -167,7 +169,7 @@ func (d *NutanixDriver) Create() error {
 		return fmt.Errorf("more than one Cluster found with name %s", d.Cluster)
 	}
 
-	log.Infof("Cluster %s find with UUID: %s", *foundClusters[0].Status.Name, *foundClusters[0].Metadata.UUID)
+	log.Infof("Cluster %s found with UUID: %s", *foundClusters[0].Status.Name, *foundClusters[0].Metadata.UUID)
 	spec.ClusterReference = utils.BuildReference(*foundClusters[0].Metadata.UUID, "cluster")
 
 	// Search target subnet
@@ -189,23 +191,40 @@ func (d *NutanixDriver) Create() error {
 		subnetFilter += fmt.Sprintf("name==%s", encodedSubnet)
 	}
 
-	subnets, err := conn.V3.ListAllSubnet(subnetFilter, getEmptyClientSideFilter())
+	responseSubnets, err := conn.V3.ListAllSubnet(subnetFilter, getEmptyClientSideFilter())
 	if err != nil {
 		log.Errorf("Error getting subnets: [%v]", err)
 		return err
 	}
 
+	// Validate filtered Subnets
 	for _, query := range d.Subnet {
-		for _, subnet := range subnets.Entities {
-			if *subnet.Status.Name == query && *subnet.Status.ClusterReference.UUID == *spec.ClusterReference.UUID {
-				n := &v3.VMNic{
-					SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
-				}
+		log.Infof("Searching subnet %s", query)
+		for _, subnet := range responseSubnets.Entities {
 
-				res.NicList = append(res.NicList, n)
-				log.Infof("Subnet %s find with UUID: %s", *subnet.Status.Name, *subnet.Metadata.UUID)
-				break
+			if *subnet.Spec.Name == query {
+				if *subnet.Spec.Resources.SubnetType == "OVERLAY" {
+					n := &v3.VMNic{
+						SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
+					}
+
+					res.NicList = append(res.NicList, n)
+					log.Infof("Overlay subnet %s found with UUID: %s", *subnet.Status.Name, *subnet.Metadata.UUID)
+					break
+				} else if *subnet.Spec.Resources.SubnetType == "VLAN" {
+
+					if *subnet.Spec.ClusterReference.UUID == *spec.ClusterReference.UUID {
+						n := &v3.VMNic{
+							SubnetReference: utils.BuildReference(*subnet.Metadata.UUID, "subnet"),
+						}
+
+						res.NicList = append(res.NicList, n)
+						log.Infof("VLAN subnet %s found with UUID: %s", *subnet.Status.Name, *subnet.Metadata.UUID)
+						break
+					}
+				}
 			}
+
 		}
 	}
 
@@ -248,7 +267,7 @@ func (d *NutanixDriver) Create() error {
 	for _, image := range images.Entities {
 		if *image.Status.Name == d.Image {
 
-			log.Infof("Image %s find with UUID: %s", *image.Status.Name, *image.Metadata.UUID)
+			log.Infof("Image %s found with UUID: %s", *image.Status.Name, *image.Metadata.UUID)
 
 			if *image.Status.Resources.ImageType != "DISK_IMAGE" {
 				log.Errorf("Image %s is not a disk template", d.Image)
