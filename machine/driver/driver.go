@@ -339,14 +339,19 @@ func (d *NutanixDriver) Create() error {
 			return errors.New("cloud-init syntax error")
 		}
 
-		err = yaml.Unmarshal([]byte(d.CloudInit), &t)
+		r1 := strings.Replace(d.CloudInit, "\\n", "\n", -1)
+		r2 := strings.Replace(r1, "\\r", "\r", -1)
+
+		log.Infof("processed cloudinit: %s", r2)
+
+		err = yaml.Unmarshal([]byte(r2), &t)
 		if err != nil {
 			log.Fatalf("Cloud-init syntax error: %v", err)
 			return err
 		}
 
 		if t.Content == nil {
-			log.Infof("Use default Cloud-init")
+			log.Infof("Cloud-init provided invalid: Use Rancher default")
 			userdata = []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
 		} else {
 			log.Infof("Cloud-init merge")
@@ -378,7 +383,7 @@ func (d *NutanixDriver) Create() error {
 			log.Infof(string(userdata))
 		}
 	} else {
-		log.Infof("Use default Cloud-init")
+		log.Infof("No Cloud-init provided: Use Rancher default")
 		userdata = []byte("#cloud-config\r\nusers:\r\n - name: root\r\n   ssh_authorized_keys:\r\n    - " + string(pubKey))
 	}
 
