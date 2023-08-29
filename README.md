@@ -46,7 +46,8 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
     
     *whitelist is mandatory and need to be changed if you relocate the UI driver*
 
-![Screenshot 2022-09-12 at 08 03 21](https://user-images.githubusercontent.com/180613/189584453-85659960-905a-41d3-83d7-fe7f704cd90a.png)
+![image](https://github.com/nutanix/docker-machine/assets/180613/4da35fc5-84a8-4674-bcce-aa00fe74d7f5)
+
 
 
 4. Wait for the driver to become "Active"
