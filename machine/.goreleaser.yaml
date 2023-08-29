@@ -6,9 +6,11 @@ builds:
       - linux
     goarch:
       - amd64
+    env:
+      - CGO_ENABLED=0
 
 archives:
-  - name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}"
+  - name_template: "{{ .ProjectName }}"
     format: binary
 
 checksum:
