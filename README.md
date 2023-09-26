@@ -43,20 +43,21 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 3. Complete the Add Node Driver form. Then click Create.
 
     - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.5.0/docker-machine-driver-nutanix`  
-    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.5.0/component.js`  
+    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.5.0/component.js`
+    - *Checksum*: `9555aadd060204ec510bb99e1dc9fed94af9780b2a409680888ee928982542cf`  
     - *Whitelist Domains*: `nutanix.github.io`  
       
     
     *whitelist is mandatory and need to be changed if you relocate the UI driver*
 
-![image](https://github.com/nutanix/docker-machine/assets/180613/4da35fc5-84a8-4674-bcce-aa00fe74d7f5)
-
+![image](https://github.com/nutanix/docker-machine/assets/180613/1ad99b85-2603-4248-9578-e6e5666cfd12)
 
 
 4. Wait for the driver to become "Active"
 5. Go to *RKE1 Configuration > Node Templates*, your can create a Nutanix Template and custom UI should show up.
 
-![Screenshot 2022-09-12 at 08 05 40](https://user-images.githubusercontent.com/180613/189584478-cf62d252-2191-4944-a8b5-5221ad66ce75.png)
+![image](https://github.com/nutanix/docker-machine/assets/180613/8c56a022-ad6b-406b-80e6-10c5673c0d9e)
+
 
 
 ## Driver Args
