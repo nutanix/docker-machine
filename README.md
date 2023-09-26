@@ -19,15 +19,18 @@ This repository contains the Rancher Node Driver for Nutanix. Nutanix Node drive
 ## Features
 
 
-1. Ability to select VM's Main Memory in Megabytes
-2. Ability to select VM's vCPU count
-3. Ability to set a custom name for the newly created VM
-4. Ability to set the number of cores per vCPU
-5. Ability to specify the network(s) of the VM
-6. Ability to specify the template disk in the VM by image name and modify his size (increase only)
-7. Ability to specify categories to applied to the VM ( flow, leap, ...)
-8. Ability to add one additional disk by specifying disk-size and storage-container
-9. Enable passthrough the host's CPU features to the newly created VM
+- Ability to select VM's Main Memory in Megabytes
+- Ability to select VM's vCPU count
+- Ability to set a custom name for the newly created VM
+- Ability to set the number of cores per vCPU
+- Ability to specify the network(s) of the VM
+- Ability to specify the template disk in the VM by image name and modify his size (increase only)
+- Ability to specify categories to applied to the VM ( flow, leap, ...)
+- Ability to add one additional disk by specifying disk-size and storage-container
+- Enable passthrough the host's CPU features to the newly created VM
+- Project support
+- Serial Port support
+- Boot type selection : Legacy or UEFI 
 
 
 ## Installation
@@ -39,8 +42,8 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 2. Click *Add Node Driver*.
 3. Complete the Add Node Driver form. Then click Create.
 
-    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.4.0/docker-machine-driver-nutanix`  
-    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.4.0/component.js`  
+    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.5.0/docker-machine-driver-nutanix`  
+    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.5.0/component.js`  
     - *Whitelist Domains*: `nutanix.github.io`  
       
     
