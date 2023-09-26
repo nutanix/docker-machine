@@ -24,9 +24,10 @@ import (
 )
 
 const (
-	defaultVMMem = 2048
-	defaultVCPUs = 2
-	defaultCores = 1
+	defaultVMMem    = 2048
+	defaultVCPUs    = 2
+	defaultCores    = 1
+	defaultBootType = "legacy"
 )
 
 // NutanixDriver driver structure
@@ -55,6 +56,7 @@ type NutanixDriver struct {
 	CloudInit        string
 	SerialPort       bool
 	Project          string
+	BootType         string
 }
 
 // NewDriver create new instance
@@ -98,6 +100,14 @@ func (d *NutanixDriver) Create() error {
 	res.MemorySizeMib = utils.Int64Ptr(int64(d.VMMem))
 	res.NumSockets = utils.Int64Ptr(int64(d.VMVCPUs))
 	res.NumVcpusPerSocket = utils.Int64Ptr(int64(d.VMCores))
+
+	// Configure BootType
+	log.Infof("Set BootType to %s", d.BootType)
+	res.BootConfig = &v3.VMBootConfig{}
+	res.BootConfig.BootType = utils.StringPtr(strings.ToUpper(d.BootType))
+	if d.BootType == "legacy" {
+		res.BootConfig.BootDeviceOrderList = append(res.BootConfig.BootDeviceOrderList, utils.StringPtr("DISK"))
+	}
 
 	// Configure CPU Passthrough
 	if d.VMCPUPassthrough {
@@ -621,6 +631,12 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "The name of the project to assign the VM",
 			Value:  "",
 		},
+		mcnflag.StringFlag{
+			EnvVar: "NUTANIX_BOOT_TYPE",
+			Name:   "nutanix-boot-type",
+			Usage:  "The boot type of the VM (legacy or uefi)",
+			Value:  defaultBootType,
+		},
 	}
 }
 
@@ -705,17 +721,36 @@ func (d *NutanixDriver) Remove() error {
 
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
 
-	// Wait for the VM to be deleted
-	for i := 0; i < 1200; i++ {
-		resp, err := conn.V3.GetTask(taskUUID)
-		if err != nil || *resp.Status != "SUCCEEDED" {
-			<-time.After(1 * time.Second)
-			continue
-		}
-		return err
-	}
-	return fmt.Errorf("unable to delete VM %s", name)
+	log.Infof("waiting to delete vm %s (%s): task %s", name, d.VMId, taskUUID)
 
+	// Wait end of the task
+waitTask:
+	for i := 0; i < 60; i++ {
+		resp, err := conn.V3.GetTask(taskUUID)
+		if err != nil {
+			log.Errorf("Error getting task: [%v]", err)
+			return err
+		}
+
+		switch *resp.Status {
+		case "SUCCEEDED":
+			log.Infof("VM %s deletion task succeeded", name)
+			break waitTask
+		case "FAILED":
+			errMsg := strings.ReplaceAll(*resp.ErrorDetail, "\n", " ")
+			log.Errorf("Error deleting vm: [%v]", errMsg)
+			return errors.New(errMsg)
+		}
+		if i == 59 {
+			log.Errorf("Timeout waiting to delete vm %s", name)
+			return errors.New("timeout waiting to delete vm")
+		}
+		log.Infof("VM %s deletion is in %s state", name, *resp.Status)
+		<-time.After(5 * time.Second)
+
+	}
+
+	return nil
 }
 
 // Restart a host. This may just call Stop(); Start() if the provider does not
@@ -775,6 +810,12 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.CloudInit = opts.String("nutanix-cloud-init")
 	d.SerialPort = opts.Bool("nutanix-vm-serial-port")
 	d.Project = opts.String("nutanix-project")
+
+	d.BootType = opts.String("nutanix-boot-type")
+	if d.BootType != "uefi" && d.BootType != "legacy" {
+		return fmt.Errorf("nutanix-boot-type %s is invalid", d.BootType)
+	}
+
 	return nil
 }
 
