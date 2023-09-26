@@ -66,6 +66,7 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 | `nutanix-password`           | The password of the nutanix management account                                                | yes      |         |
 | `nutanix-insecure`           | Set to true to force SSL insecure connection                                                  | no       | false   |
 | `nutanix-cluster`            | The name of the cluster where deploy the VM (case sensitive)                                  | yes      |         |
+| `nutanix-boot-type`          | The boot type of the VM (legacy or uefi)                                                      | no       | legacy  |
 | `nutanix-vm-mem`             | The amount of RAM of the newly created VM (MB)                                                | no       | 2 GB    |
 | `nutanix-vm-cpus`            | The number of cpus in the newly created VM (core)                                             | no       | 2       |
 | `nutanix-vm-cores`           | The number of cores per vCPU                                                                  | no       | 1       |
