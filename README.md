@@ -42,9 +42,9 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 2. Click *Add Node Driver*.
 3. Complete the Add Node Driver form. Then click Create.
 
-    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.5.0/docker-machine-driver-nutanix`  
-    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.5.0/component.js`
-    - *Checksum*: `9555aadd060204ec510bb99e1dc9fed94af9780b2a409680888ee928982542cf`  
+    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.6.0/docker-machine-driver-nutanix`  
+    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.6.0/component.js`
+    - *Checksum*: ``  
     - *Whitelist Domains*: `nutanix.github.io`  
       
     
@@ -74,7 +74,7 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 | `nutanix-vm-mem`             | The amount of RAM of the newly created VM (MB)                                                | no       | 2 GB    |
 | `nutanix-vm-cpus`            | The number of cpus in the newly created VM (core)                                             | no       | 2       |
 | `nutanix-vm-cores`           | The number of cores per vCPU                                                                  | no       | 1       |
-| `nutanix-vm-network`         | The network(s) to which the VM is attached to                                                 | yes      |         |
+| `nutanix-vm-network`         | The network(s) to which the VM is attached to ( name or UUID )                                | yes      |         |
 | `nutanix-vm-image`           | The name of the Disk Image template we use for the newly created VM (must support cloud-init) | yes      |         |
 | `nutanix-vm-image-size`      | The new size of the Image we use as a template (in GiB)                                       | no       |         |
 | `nutanix-vm-categories`      | The name of the categories who will be applied to the newly created VM                        | no       |         |

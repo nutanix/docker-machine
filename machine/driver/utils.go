@@ -1,6 +1,15 @@
 package driver
 
-import "gopkg.in/yaml.v3"
+import (
+	"regexp"
+
+	"gopkg.in/yaml.v3"
+)
+
+func isUUID(uuid string) bool {
+	uuidPattern := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	return uuidPattern.MatchString(uuid)
+}
 
 func iterateNode(node *yaml.Node, identifier string) *yaml.Node {
 	returnNode := false
