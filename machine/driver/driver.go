@@ -192,25 +192,43 @@ func (d *NutanixDriver) Create() error {
 
 	subnetFilter := ""
 
+	// Create subnets filter query and add UUID subnets directly
 	for _, subnet := range d.Subnet {
-		if len(subnetFilter) != 0 {
-			subnetFilter += ","
+
+		if isUUID(subnet) {
+			n := &v3.VMNic{
+				SubnetReference: utils.BuildReference(*utils.StringPtr(subnet), "subnet"),
+			}
+
+			res.NicList = append(res.NicList, n)
+			log.Infof("UUID subnet added %s", subnet)
+		} else {
+			if len(subnetFilter) != 0 {
+				subnetFilter += ","
+			}
+
+			t := &url.URL{Path: subnet}
+			encodedSubnet := t.String()
+			subnetFilter += fmt.Sprintf("name==%s", encodedSubnet)
 		}
 
-		t := &url.URL{Path: subnet}
-		encodedSubnet := t.String()
-		subnetFilter += fmt.Sprintf("name==%s", encodedSubnet)
 	}
 
+	// Retrieve all subnets
 	responseSubnets, err := conn.V3.ListAllSubnet(subnetFilter, getEmptyClientSideFilter())
 	if err != nil {
 		log.Errorf("Error getting subnets: [%v]", err)
 		return err
 	}
 
-	// Validate filtered Subnets
+	// Search for non UUID Subnets
 	for _, query := range d.Subnet {
+		if isUUID(query) {
+			continue
+		}
+
 		log.Infof("Searching subnet %s", query)
+
 		for _, subnet := range responseSubnets.Entities {
 
 			if *subnet.Spec.Name == query {
