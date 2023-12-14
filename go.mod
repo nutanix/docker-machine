@@ -1,6 +1,6 @@
 module github.com/nutanix/docker-machine
 
-go 1.18
+go 1.21
 
 replace github.com/docker/docker => github.com/docker/engine v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 
