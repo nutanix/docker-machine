@@ -27,8 +27,8 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
-	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
-	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
