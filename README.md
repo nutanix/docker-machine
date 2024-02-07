@@ -19,15 +19,18 @@ This repository contains the Rancher Node Driver for Nutanix. Nutanix Node drive
 ## Features
 
 
+- Configure Prism Central and corresponding user to talk to Nutanix platform
+- Define target cluster to deploy VM
+- Ability to set a custom name for the newly created VM
 - Ability to select VM's Main Memory in Megabytes
 - Ability to select VM's vCPU count
-- Ability to set a custom name for the newly created VM
 - Ability to set the number of cores per vCPU
-- Ability to specify the network(s) of the VM
+- Ability to specify the network(s) of the VM (Classic or VPC)
 - Ability to specify the template disk in the VM by image name and modify his size (increase only)
 - Ability to specify categories to applied to the VM ( flow, leap, ...)
 - Ability to add one additional disk by specifying disk-size and storage-container
 - Enable passthrough the host's CPU features to the newly created VM
+- Define a Cloud-init user-data to send to the newly created VM
 - Project support
 - Serial Port support
 - Boot type selection : Legacy or UEFI 
