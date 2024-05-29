@@ -397,7 +397,7 @@ func (d *NutanixDriver) Create() error {
 			rancherNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 			rancherNode.Content = append(rancherNode.Content, buildStringNodes("name", "root", "")...)
 			rancherNode.Content = append(rancherNode.Content, buildStringNodes("sudo", "ALL=(ALL) NOPASSWD:ALL", "")...)
-			rancherNode.Content = append(rancherNode.Content, buildScalarNodes("ssh-authorized-keys")...)
+			rancherNode.Content = append(rancherNode.Content, buildScalarNodes("ssh_authorized_keys")...)
 
 			sshSeqNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 			sshSeqNode.Content = append(sshSeqNode.Content, buildScalarNodes(string(pubKey))...)
