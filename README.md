@@ -117,3 +117,10 @@ build local binary => `make local`
 * v2.x add Rancher 2.0 support
 * v3.x is a rewrite of the driver that connect to Prism Central
 
+## Support
+This code is developed in the open with input from the community through issues and PRs. A Nutanix engineering team serves as the maintainer. Documentation is available in the project repository. Issues and enhancement requests can be submitted in the [Issues tab of this repository](../../issues). Please search for and review the existing open issues before submitting a new issue.
+
+## License
+Copyright 2022-2023 Nutanix, Inc.
+
+The project is released under Mozilla Public License Version 2.0.
