@@ -53,7 +53,7 @@ jobs:
         run: go build -v -o build/docker-machine-driver-nutanix machine/main.go
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.21.0
+        uses: aquasecurity/trivy-action@0.22.0
         with:
           scan-type: "fs"
           ignore-unfixed: true
