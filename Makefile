@@ -8,7 +8,8 @@ PLATFORM=`uname`
 
 LDFLAGS=-ldflags "-w -s"
 
-build: docker-machine-driver-nutanix
+build:
+	@echo "PoC"
 
 test: $(SOURCES)
 	go test -v -short -race -timeout 30s ./...
