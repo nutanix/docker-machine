@@ -409,7 +409,7 @@ func (d *NutanixDriver) Create() error {
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Infof(string(userdata))
+			log.Infof("Cloud-init userdata: %s", string(userdata))
 		}
 	} else {
 		log.Infof("No Cloud-init provided: Use Rancher default")
