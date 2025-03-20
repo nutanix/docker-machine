@@ -46,7 +46,7 @@ func DebugResponse(res *http.Response) {
 func ConvertMapString(o map[string]interface{}) map[string]string {
 	converted := make(map[string]string)
 	for k, v := range o {
-		converted[k] = fmt.Sprintf(v.(string))
+		converted[k] = fmt.Sprint(v)
 	}
 	return converted
 }
