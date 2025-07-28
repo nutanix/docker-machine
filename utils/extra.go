@@ -5,7 +5,7 @@ import (
 	// "strconv"
 	// "strings"
 
-	v3 "github.com/nutanix-cloud-native/prism-go-client/pkg/nutanix/v3"
+	v3 "github.com/nutanix-cloud-native/prism-go-client/v3"
 )
 
 // BuildReference create reference from defined object

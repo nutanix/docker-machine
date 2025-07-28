@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -19,8 +20,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	client "github.com/nutanix-cloud-native/prism-go-client/pkg/nutanix"
-	v3 "github.com/nutanix-cloud-native/prism-go-client/pkg/nutanix/v3"
+	client "github.com/nutanix-cloud-native/prism-go-client"
+	v3 "github.com/nutanix-cloud-native/prism-go-client/v3"
 )
 
 const (
@@ -85,6 +86,8 @@ func (d *NutanixDriver) Create() error {
 		ProxyURL:    d.ProxyURL,
 	}
 
+	ctx := context.Background()
+
 	log.Infof("Connecting on: %s", configCreds.URL)
 
 	conn, err := v3.NewV3Client(configCreds)
@@ -129,7 +132,7 @@ func (d *NutanixDriver) Create() error {
 	if d.Project != "" {
 
 		projectFilter := fmt.Sprintf("name==%s", d.Project)
-		projects, err := conn.V3.ListAllProject(projectFilter)
+		projects, err := conn.V3.ListAllProject(ctx, projectFilter)
 		if err != nil {
 			return err
 		}
@@ -159,7 +162,7 @@ func (d *NutanixDriver) Create() error {
 	encodedCluster := c.String()
 	clusterFilter := fmt.Sprintf("name==%s", encodedCluster)
 
-	clusters, err := conn.V3.ListAllCluster(clusterFilter)
+	clusters, err := conn.V3.ListAllCluster(ctx, clusterFilter)
 	if err != nil {
 		log.Errorf("Error getting clusters: [%v]", err)
 		return err
@@ -216,7 +219,7 @@ func (d *NutanixDriver) Create() error {
 	}
 
 	// Retrieve all subnets
-	responseSubnets, err := conn.V3.ListAllSubnet(subnetFilter, getEmptyClientSideFilter())
+	responseSubnets, err := conn.V3.ListAllSubnet(ctx, subnetFilter, getEmptyClientSideFilter())
 	if err != nil {
 		log.Errorf("Error getting subnets: [%v]", err)
 		return err
@@ -265,7 +268,8 @@ func (d *NutanixDriver) Create() error {
 
 	if len(d.Categories) != 0 {
 		log.Infof("Categories provided: %s", d.Categories)
-		metadata.Categories = make(map[string]string)
+		metadata.CategoriesMapping = make(map[string][]string)
+		metadata.UseCategoriesMapping = utils.BoolPtr(true)
 
 		for _, group := range d.Categories {
 			category := strings.Split(group, "=")
@@ -279,7 +283,7 @@ func (d *NutanixDriver) Create() error {
 			category[0] = strings.TrimSpace(category[0])
 			category[1] = strings.TrimSpace(category[1])
 
-			metadata.Categories[category[0]] = category[1]
+			metadata.CategoriesMapping[category[0]] = append(metadata.CategoriesMapping[category[0]], category[1])
 			log.Infof("Added category %s: %s", category[0], category[1])
 		}
 	}
@@ -288,7 +292,7 @@ func (d *NutanixDriver) Create() error {
 	i := &url.URL{Path: d.Image}
 	encodedImage := i.String()
 	imageFilter := fmt.Sprintf("name==%s", encodedImage)
-	images, err := conn.V3.ListAllImage(imageFilter)
+	images, err := conn.V3.ListAllImage(ctx, imageFilter)
 	if err != nil {
 		log.Errorf("Error getting images: [%v]", err)
 		return err
@@ -444,7 +448,7 @@ func (d *NutanixDriver) Create() error {
 	request.Spec = spec
 
 	log.Infof("Launch VM creation")
-	resp, err := conn.V3.CreateVM(request)
+	resp, err := conn.V3.CreateVM(ctx, request)
 	if err != nil {
 		log.Errorf("Error creating vm: [%v]", err)
 		return err
@@ -458,7 +462,7 @@ func (d *NutanixDriver) Create() error {
 	// Wait end of the task
 waitTask:
 	for i := 0; i < d.Timeout/5; i++ {
-		resp, err := conn.V3.GetTask(taskUUID)
+		resp, err := conn.V3.GetTask(ctx, taskUUID)
 		if err != nil {
 			log.Errorf("Error getting task: [%v]", err)
 			return err
@@ -488,7 +492,7 @@ waitTask:
 
 	// Wait for the VM obtain an IP address
 	for i := 0; i < d.Timeout/5; i++ {
-		vmInfo, err := conn.V3.GetVM(uuid)
+		vmInfo, err := conn.V3.GetVM(ctx, uuid)
 		if err != nil {
 			log.Errorf("Error getting vm: [%v]", err)
 			return err
@@ -502,7 +506,7 @@ waitTask:
 		if i == (d.Timeout/5)-1 {
 			log.Errorf("Timeout waiting for vm %s to obtain an IP address", name)
 			log.Infof("Deleting VM %s (%s)", name, uuid)
-			_, err := conn.V3.DeleteVM(uuid)
+			_, err := conn.V3.DeleteVM(ctx, uuid)
 			if err != nil {
 				log.Errorf("Failed to delete VM %s (%s): %v", name, uuid, err)
 			}
@@ -672,6 +676,8 @@ func (d *NutanixDriver) GetState() (state.State, error) {
 		ProxyURL:    d.ProxyURL,
 	}
 
+	ctx := context.Background()
+
 	log.Infof("Connecting on: %s", configCreds.URL)
 
 	conn, err := v3.NewV3Client(configCreds)
@@ -679,7 +685,7 @@ func (d *NutanixDriver) GetState() (state.State, error) {
 		return state.Error, err
 	}
 
-	resp, err := conn.V3.GetVM(d.VMId)
+	resp, err := conn.V3.GetVM(ctx, d.VMId)
 	if err != nil {
 		return state.Error, err
 	}
@@ -717,6 +723,8 @@ func (d *NutanixDriver) Remove() error {
 		return nil
 	}
 
+	ctx := context.Background()
+
 	log.Infof("Connecting on: %s", configCreds.URL)
 
 	conn, err := v3.NewV3Client(configCreds)
@@ -725,7 +733,7 @@ func (d *NutanixDriver) Remove() error {
 	}
 
 	log.Infof("Deleting VM %s (%s)", name, d.VMId)
-	resp, err := conn.V3.DeleteVM(d.VMId)
+	resp, err := conn.V3.DeleteVM(ctx, d.VMId)
 	if err != nil {
 		return fmt.Errorf("error launching deleting VM %s: %v", name, err)
 	}
@@ -737,7 +745,7 @@ func (d *NutanixDriver) Remove() error {
 	// Wait end of the task
 waitTask:
 	for i := 0; i < d.Timeout/5; i++ {
-		resp, err := conn.V3.GetTask(taskUUID)
+		resp, err := conn.V3.GetTask(ctx, taskUUID)
 		if err != nil {
 			log.Errorf("Error getting task: [%v]", err)
 			return err
@@ -856,6 +864,8 @@ func (d *NutanixDriver) Start() error {
 		ProxyURL:    d.ProxyURL,
 	}
 
+	ctx := context.Background()
+
 	log.Infof("Connecting on: %s", configCreds.URL)
 
 	conn, err := v3.NewV3Client(configCreds)
@@ -863,7 +873,7 @@ func (d *NutanixDriver) Start() error {
 		return err
 	}
 
-	vmResp, err := conn.V3.GetVM(d.VMId)
+	vmResp, err := conn.V3.GetVM(ctx, d.VMId)
 	if err != nil {
 		return err
 	}
@@ -874,7 +884,7 @@ func (d *NutanixDriver) Start() error {
 	request.Metadata = vmResp.Metadata
 	request.Spec.Resources.PowerState = utils.StringPtr("ON")
 
-	resp, err := conn.V3.UpdateVM(d.VMId, request)
+	resp, err := conn.V3.UpdateVM(ctx, d.VMId, request)
 	if err != nil {
 		return err
 	}
@@ -883,7 +893,7 @@ func (d *NutanixDriver) Start() error {
 
 	// Wait for the VM to be deleted
 	for i := 0; i < 1200; i++ {
-		resp, err := conn.V3.GetTask(taskUUID)
+		resp, err := conn.V3.GetTask(ctx, taskUUID)
 		if err != nil || *resp.Status != "SUCCEEDED" {
 			<-time.After(1 * time.Second)
 			continue
@@ -908,6 +918,8 @@ func (d *NutanixDriver) Stop() error {
 		ProxyURL:    d.ProxyURL,
 	}
 
+	ctx := context.Background()
+
 	log.Infof("Connecting on: %s", configCreds.URL)
 
 	conn, err := v3.NewV3Client(configCreds)
@@ -915,7 +927,7 @@ func (d *NutanixDriver) Stop() error {
 		return err
 	}
 
-	vmResp, err := conn.V3.GetVM(d.VMId)
+	vmResp, err := conn.V3.GetVM(ctx, d.VMId)
 	if err != nil {
 		return err
 	}
@@ -926,7 +938,7 @@ func (d *NutanixDriver) Stop() error {
 	request.Metadata = vmResp.Metadata
 	request.Spec.Resources.PowerState = utils.StringPtr("OFF")
 
-	resp, err := conn.V3.UpdateVM(d.VMId, request)
+	resp, err := conn.V3.UpdateVM(ctx, d.VMId, request)
 	if err != nil {
 		return err
 	}
@@ -935,7 +947,7 @@ func (d *NutanixDriver) Stop() error {
 
 	// Wait for the VM to be deleted
 	for i := 0; i < 1200; i++ {
-		resp, err := conn.V3.GetTask(taskUUID)
+		resp, err := conn.V3.GetTask(ctx, taskUUID)
 		if err != nil || *resp.Status != "SUCCEEDED" {
 			<-time.After(1 * time.Second)
 			continue
