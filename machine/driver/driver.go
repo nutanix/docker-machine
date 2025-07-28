@@ -57,6 +57,7 @@ type NutanixDriver struct {
 	SerialPort       bool
 	Project          string
 	BootType         string
+	Timeout          int
 }
 
 // NewDriver create new instance
@@ -456,7 +457,7 @@ func (d *NutanixDriver) Create() error {
 
 	// Wait end of the task
 waitTask:
-	for i := 0; i < 60; i++ {
+	for i := 0; i < d.Timeout/5; i++ {
 		resp, err := conn.V3.GetTask(taskUUID)
 		if err != nil {
 			log.Errorf("Error getting task: [%v]", err)
@@ -472,7 +473,7 @@ waitTask:
 			log.Errorf("Error creating vm: [%v]", errMsg)
 			return errors.New(errMsg)
 		}
-		if i == 59 {
+		if i == (d.Timeout/5)-1 {
 			log.Errorf("Timeout waiting for vm %s to create", name)
 			return errors.New("timeout waiting for vm to create")
 		}
@@ -481,38 +482,12 @@ waitTask:
 
 	}
 
-	// Wait for the VM to be available
-	for i := 0; i < 60; i++ {
-		vmIntent, err := conn.V3.GetVM(uuid)
-		if err != nil {
-			log.Errorf("Error getting vm: [%v]", err)
-			return err
-		}
-
-		nbDisks := len(spec.Resources.DiskList) + 1
-
-		log.Infof("Waiting until at least %d disks are present...", nbDisks)
-
-		if len(vmIntent.Spec.Resources.DiskList) == nbDisks {
-			break
-		}
-
-		if i == 59 {
-			log.Errorf("Timeout waiting for vm %s to be available", name)
-			return errors.New("timeout waiting for vm to be available")
-		} else {
-			log.Infof("Waiting VM %s availability", name)
-			<-time.After(5 * time.Second)
-			continue
-		}
-
-	}
 	d.VMId = uuid
 
 	log.Infof("VM %s successfully created", name)
 
 	// Wait for the VM obtain an IP address
-	for i := 0; i < 60; i++ {
+	for i := 0; i < d.Timeout/5; i++ {
 		vmInfo, err := conn.V3.GetVM(uuid)
 		if err != nil {
 			log.Errorf("Error getting vm: [%v]", err)
@@ -524,8 +499,13 @@ waitTask:
 			break
 		}
 
-		if i == 59 {
+		if i == (d.Timeout/5)-1 {
 			log.Errorf("Timeout waiting for vm %s to obtain an IP address", name)
+			log.Infof("Deleting VM %s (%s)", name, uuid)
+			_, err := conn.V3.DeleteVM(uuid)
+			if err != nil {
+				log.Errorf("Failed to delete VM %s (%s): %v", name, uuid, err)
+			}
 			return errors.New("timeout waiting for vm to obtain an IP address")
 		} else {
 			log.Infof("Waiting VM %s ip configuration", name)
@@ -655,6 +635,12 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "The boot type of the VM (legacy or uefi)",
 			Value:  defaultBootType,
 		},
+		mcnflag.IntFlag{
+			EnvVar: "NUTANIX_TIMEOUT",
+			Name:   "nutanix-timeout",
+			Usage:  "Timeout for Nutanix operations (in seconds)",
+			Value:  300,
+		},
 	}
 }
 
@@ -726,15 +712,22 @@ func (d *NutanixDriver) Remove() error {
 		ProxyURL:    d.ProxyURL,
 	}
 
+	if d.VMId == "" {
+		log.Infof("VMId is empty, nothing to remove")
+		return nil
+	}
+
 	log.Infof("Connecting on: %s", configCreds.URL)
 
 	conn, err := v3.NewV3Client(configCreds)
 	if err != nil {
-		return err
+		return fmt.Errorf("error connecting to Nutanix: %v", err)
 	}
+
+	log.Infof("Deleting VM %s (%s)", name, d.VMId)
 	resp, err := conn.V3.DeleteVM(d.VMId)
 	if err != nil {
-		return err
+		return fmt.Errorf("error launching deleting VM %s: %v", name, err)
 	}
 
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
@@ -743,7 +736,7 @@ func (d *NutanixDriver) Remove() error {
 
 	// Wait end of the task
 waitTask:
-	for i := 0; i < 60; i++ {
+	for i := 0; i < d.Timeout/5; i++ {
 		resp, err := conn.V3.GetTask(taskUUID)
 		if err != nil {
 			log.Errorf("Error getting task: [%v]", err)
@@ -756,10 +749,14 @@ waitTask:
 			break waitTask
 		case "FAILED":
 			errMsg := strings.ReplaceAll(*resp.ErrorDetail, "\n", " ")
-			log.Errorf("Error deleting vm: [%v]", errMsg)
+			if strings.Contains(errMsg, "ENTITY_NOT_FOUND") {
+				log.Infof("VM %s already deleted", name)
+				return nil
+			}
+			log.Errorf("Error deleting vm: %v", errMsg)
 			return errors.New(errMsg)
 		}
-		if i == 59 {
+		if i == (d.Timeout/5)-1 {
 			log.Errorf("Timeout waiting to delete vm %s", name)
 			return errors.New("timeout waiting to delete vm")
 		}
@@ -832,6 +829,13 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	d.BootType = opts.String("nutanix-boot-type")
 	if d.BootType != "uefi" && d.BootType != "legacy" {
 		return fmt.Errorf("nutanix-boot-type %s is invalid", d.BootType)
+	}
+
+	if d.Timeout < 300 {
+		log.Warnf("nutanix-timeout is too low, setting to 300 seconds")
+		d.Timeout = 300
+	} else {
+		d.Timeout = opts.Int("nutanix-timeout")
 	}
 
 	return nil
