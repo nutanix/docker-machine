@@ -34,6 +34,7 @@ This repository contains the Rancher Node Driver for Nutanix. Nutanix Node drive
 - Project support
 - Serial Port support
 - Boot type selection : Legacy or UEFI 
+- GPU support
 
 
 ## Installation
@@ -83,6 +84,7 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 | `nutanix-vm-image`           | The name of the Disk Image template we use for the newly created VM (must support cloud-init) | yes      |         |
 | `nutanix-vm-image-size`      | The new size of the Image we use as a template (in GiB)                                       | no       |         |
 | `nutanix-vm-categories`      | The name of the categories who will be applied to the newly created VM                        | no       |         |
+| `nutanix-vm-gpu`             | The name of GPU to attach to the newly created VM                                             | no       |         |
 | `nutanix-project`            | The name of the project where deploy the VM (default if empty)                                | no       | default |
 | `nutanix-disk-size`          | The size of the additional disk to add to the VM (in GiB)                                     | no       |         |
 | `nutanix-storage-container`  | The storage container UUID of the additional disk to add to the VM                            | no       |         |

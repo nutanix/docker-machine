@@ -59,6 +59,7 @@ type NutanixDriver struct {
 	Project          string
 	BootType         string
 	Timeout          int
+	GPUs             []string
 }
 
 // NewDriver create new instance
@@ -347,6 +348,19 @@ func (d *NutanixDriver) Create() error {
 		log.Infof("Added disk with %d GiB on storage container with UUID: %s", d.DiskSize, d.StorageContainer)
 	}
 
+	// Add GPU devices
+	if len(d.GPUs) > 0 {
+
+		gpuList, err := GetGPUList(ctx, conn, d.GPUs, *foundClusters[0].Metadata.UUID)
+		if err != nil {
+			log.Errorf("failed to get the GPU list to create the VM %s. %v", name, err)
+			return err
+		}
+
+		res.GpuList = gpuList
+
+	}
+
 	// SSH Key generation
 	err = ssh.GenerateSSHKey(d.GetSSHKeyPath())
 	if err != nil {
@@ -475,6 +489,12 @@ waitTask:
 		case "FAILED":
 			errMsg := strings.ReplaceAll(*resp.ErrorDetail, "\n", " ")
 			log.Errorf("Error creating vm: [%v]", errMsg)
+			log.Infof("Deleting VM %s (%s)", name, uuid)
+			_, err := conn.V3.DeleteVM(ctx, uuid)
+			if err != nil {
+				log.Errorf("Failed to delete VM %s (%s): %v", name, uuid, err)
+			}
+
 			return errors.New(errMsg)
 		}
 		if i == (d.Timeout/5)-1 {
@@ -644,6 +664,10 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "nutanix-timeout",
 			Usage:  "Timeout for Nutanix operations (in seconds)",
 			Value:  300,
+		},
+		mcnflag.StringSliceFlag{
+			Name:  "nutanix-vm-gpu",
+			Usage: "The list of GPU devices to attach to the newly created VM",
 		},
 	}
 }
@@ -845,6 +869,8 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	} else {
 		d.Timeout = opts.Int("nutanix-timeout")
 	}
+
+	d.GPUs = opts.StringSlice("nutanix-vm-gpu")
 
 	return nil
 }
