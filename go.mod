@@ -1,6 +1,6 @@
 module github.com/nutanix/docker-machine
 
-go 1.24
+go 1.24.0
 
 replace github.com/docker/docker => github.com/docker/engine v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 
@@ -38,9 +38,9 @@ require (
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/term v0.37.0 // indirect
 	google.golang.org/genproto v0.0.0-20200711021454-869866162049 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
