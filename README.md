@@ -35,6 +35,7 @@ This repository contains the Rancher Node Driver for Nutanix. Nutanix Node drive
 - Serial Port support
 - Boot type selection : Legacy or UEFI 
 - GPU support
+- Prism Central Service Accounts support
 
 
 ## Installation
@@ -104,8 +105,10 @@ Starting `v3.3.0` the Rancher Node driver implements Nutanix Project support. Th
   - Cluster View Access
   - Image View Only
 
+## Service Accounts support
 
-
+Starting version 3.8.0, the Rancher Node Driver support Prism Central Service Accounts. 
+To use a Service Account, you need to provide `X-ntnx-api-key` as the user name and the corresponding API Key as the password.
 
 ## Development
 
