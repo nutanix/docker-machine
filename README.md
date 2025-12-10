@@ -49,7 +49,7 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 
     - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.8.0/docker-machine-driver-nutanix`  
     - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.8.0/component.js`
-    - *Checksum*: `2f70c4bdccd3c5e68bd8c32aadb5b525275a3cda5799f29736f37bdd168caa94`  
+    - *Checksum*: `ad18a0150f37e6cf0aef99a529f9541be72daa9e6dc3dad835d095d44e600f6a`  
     - *Whitelist Domains*: `nutanix.github.io`  
       
     
@@ -107,7 +107,7 @@ Starting `v3.3.0` the Rancher Node driver implements Nutanix Project support. Th
 
 ## Service Accounts support
 
-Starting version 3.8.0, the Rancher Node Driver support Prism Central Service Accounts. 
+Starting 'v3.8.0' the Rancher Node Driver support Prism Central Service Accounts. 
 To use a Service Account, you need to provide `X-ntnx-api-key` as the user name and the corresponding API Key as the password.
 
 ## Development
