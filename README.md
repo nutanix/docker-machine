@@ -47,8 +47,8 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 2. Click *Add Node Driver*.
 3. Complete the Add Node Driver form. Then click Create.
 
-    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.7.0/docker-machine-driver-nutanix`  
-    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.7.0/component.js`
+    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.8.0/docker-machine-driver-nutanix`  
+    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.8.0/component.js`
     - *Checksum*: `2f70c4bdccd3c5e68bd8c32aadb5b525275a3cda5799f29736f37bdd168caa94`  
     - *Whitelist Domains*: `nutanix.github.io`  
       
