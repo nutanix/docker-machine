@@ -55,7 +55,8 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
     
     *whitelist is mandatory and need to be changed if you relocate the UI driver*
 
-<img width="956" height="461" alt="image" src="https://github.com/user-attachments/assets/1237ca91-e866-4906-aa1e-e9dfcdf2a58c" />
+<img width="1086" height="392" alt="image" src="https://github.com/user-attachments/assets/91b7778a-514f-40c4-b5af-dcf07462d597" />
+
 
 
 
@@ -107,7 +108,7 @@ Starting `v3.3.0` the Rancher Node driver implements Nutanix Project support. Th
 
 ## Service Accounts support
 
-Starting 'v3.8.0' the Rancher Node Driver support Prism Central Service Accounts. 
+Starting `v3.8.0` the Rancher Node Driver support Prism Central Service Accounts. 
 To use a Service Account, you need to provide `X-ntnx-api-key` as the user name and the corresponding API Key as the password.
 
 ## Development
