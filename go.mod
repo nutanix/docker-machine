@@ -7,7 +7,7 @@ replace github.com/docker/docker => github.com/docker/engine v17.12.0-ce-rc1.0.2
 require (
 	github.com/docker/machine v0.16.2
 	github.com/google/uuid v1.6.0
-	github.com/nutanix-cloud-native/prism-go-client v0.5.5
+	github.com/nutanix-cloud-native/prism-go-client v0.6.1
 	github.com/sirupsen/logrus v1.9.3
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -43,4 +43,5 @@ require (
 	golang.org/x/term v0.37.0 // indirect
 	google.golang.org/genproto v0.0.0-20200711021454-869866162049 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
