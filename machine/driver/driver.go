@@ -60,6 +60,7 @@ type NutanixDriver struct {
 	BootType         string
 	Timeout          int
 	GPUs             []string
+	Description      string
 }
 
 // NewDriver create new instance
@@ -455,7 +456,7 @@ func (d *NutanixDriver) Create() error {
 
 	metadata.Kind = utils.StringPtr("vm")
 	spec.Name = utils.StringPtr(name)
-	spec.Description = utils.StringPtr("VM created by Nutanix Rancher Node Driver")
+	spec.Description = utils.StringPtr(d.Description)
 	res.PowerState = utils.StringPtr("ON")
 	spec.Resources = res
 	request.Metadata = metadata
@@ -669,6 +670,10 @@ func (d *NutanixDriver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "nutanix-vm-gpu",
 			Usage: "The list of GPU devices to attach to the newly created VM",
 		},
+		mcnflag.StringFlag{
+			Name:  "nutanix-vm-description",
+			Usage: "The description of the newly created VM",
+		},
 	}
 }
 
@@ -871,6 +876,13 @@ func (d *NutanixDriver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 	}
 
 	d.GPUs = opts.StringSlice("nutanix-vm-gpu")
+
+	d.Description = opts.String("nutanix-vm-description")
+	if d.Description == "" {
+		d.Description = "VM created by Nutanix Rancher Node Driver"
+	} else if len(d.Description) > 1000 {
+		d.Description = d.Description[:1000]
+	}
 
 	return nil
 }
