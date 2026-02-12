@@ -47,8 +47,8 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 2. Click *Add Node Driver*.
 3. Complete the Add Node Driver form. Then click Create.
 
-    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.8.0/docker-machine-driver-nutanix`  
-    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.8.0/component.js`
+    - *Download URL*: `https://github.com/nutanix/docker-machine/releases/download/v3.9.0/docker-machine-driver-nutanix`  
+    - *Custom UI URL*: `https://nutanix.github.io/rancher-ui-driver/v3.9.0/component.js`
     - *Checksum*: `ad18a0150f37e6cf0aef99a529f9541be72daa9e6dc3dad835d095d44e600f6a`  
     - *Whitelist Domains*: `nutanix.github.io`  
       
@@ -71,29 +71,30 @@ If you want to use Nutanix Node Driver, you need add it in order to start using 
 
 ## Driver Args
 
-| Arg                          | Description                                                                                   | Required | Default |
-|------------------------------|:----------------------------------------------------------------------------------------------|:---------|---------|
-| `nutanix-endpoint`           | The hostname/ip-address of the Prism Central                                                  | yes      |         |
-| `nutanix-port`               | The port to connect to Prism Central                                                          | no       | 9440    |
-| `nutanix-username`           | The username of the nutanix management account                                                | yes      |         |
-| `nutanix-password`           | The password of the nutanix management account                                                | yes      |         |
-| `nutanix-insecure`           | Set to true to force SSL insecure connection                                                  | no       | false   |
-| `nutanix-cluster`            | The name of the cluster where deploy the VM (case sensitive)                                  | yes      |         |
-| `nutanix-boot-type`          | The boot type of the VM (legacy or uefi)                                                      | no       | legacy  |
-| `nutanix-vm-mem`             | The amount of RAM of the newly created VM (MB)                                                | no       | 2 GB    |
-| `nutanix-vm-cpus`            | The number of cpus in the newly created VM (core)                                             | no       | 2       |
-| `nutanix-vm-cores`           | The number of cores per vCPU                                                                  | no       | 1       |
-| `nutanix-vm-network`         | The network(s) to which the VM is attached to ( name or UUID )                                | yes      |         |
-| `nutanix-vm-image`           | The name of the Disk Image template we use for the newly created VM (must support cloud-init) | yes      |         |
-| `nutanix-vm-image-size`      | The new size of the Image we use as a template (in GiB)                                       | no       |         |
-| `nutanix-vm-categories`      | The name of the categories who will be applied to the newly created VM                        | no       |         |
-| `nutanix-vm-gpu`             | The name of GPU to attach to the newly created VM                                             | no       |         |
-| `nutanix-project`            | The name of the project where deploy the VM (default if empty)                                | no       | default |
-| `nutanix-disk-size`          | The size of the additional disk to add to the VM (in GiB)                                     | no       |         |
-| `nutanix-storage-container`  | The storage container UUID of the additional disk to add to the VM                            | no       |         |
-| `nutanix-cloud-init`         | Cloud-init to provide to the VM (will be patched with rancher root user)                      | no       |         |
-| `nutanix-vm-cpu-passthrough` | Enable passthrough the host's CPU features to the newly created VM                            | no       | false   |
-| `nutanix-vm-serial-port`     | Attach a serial port to the newly created VM                                                  | no       | false   |
+| Arg                          | Description                                                                                      | Required | Default                                   |
+|------------------------------|:-------------------------------------------------------------------------------------------------|:---------|-------------------------------------------|
+| `nutanix-endpoint`           | The hostname/ip-address of the Prism Central                                                     | yes      |                                           |
+| `nutanix-port`               | The port to connect to Prism Central                                                             | no       | 9440                                      |
+| `nutanix-username`           | The username of the nutanix management account                                                   | yes      |                                           |
+| `nutanix-password`           | The password of the nutanix management account                                                   | yes      |                                           |
+| `nutanix-insecure`           | Set to true to force SSL insecure connection                                                     | no       | false                                     |
+| `nutanix-cluster`            | The name of the cluster where deploy the VM (case sensitive)                                     | yes      |                                           |
+| `nutanix-boot-type`          | The boot type of the VM (legacy or uefi)                                                         | no       | legacy                                    |
+| `nutanix-vm-mem`             | The amount of RAM of the newly created VM (MB)                                                   | no       | 2 GB                                      |
+| `nutanix-vm-cpus`            | The number of cpus in the newly created VM (core)                                                | no       | 2                                         |
+| `nutanix-vm-cores`           | The number of cores per vCPU                                                                     | no       | 1                                         |
+| `nutanix-vm-network`         | The network(s) to which the VM is attached to ( name or UUID )                                   | yes      |                                           |
+| `nutanix-vm-image`           | The name of the Disk Image template we use for the newly created VM (must support cloud-init)    | yes      |                                           |
+| `nutanix-vm-image-size`      | The new size of the Image we use as a template (in GiB)                                          | no       |                                           |
+| `nutanix-vm-categories`      | The name of the categories who will be applied to the newly created VM                           | no       |                                           |
+| `nutanix-vm-gpu`             | The list of GPU device names to attach to the newly created VM (can be specified multiple times) | no       |                                           |
+| `nutanix-project`            | The name of the project where deploy the VM (default if empty)                                   | no       | default                                   |
+| `nutanix-disk-size`          | The size of the additional disk to add to the VM (in GiB)                                        | no       |                                           |
+| `nutanix-storage-container`  | The storage container UUID of the additional disk to add to the VM                               | no       |                                           |
+| `nutanix-cloud-init`         | Cloud-init to provide to the VM (will be patched with rancher root user)                         | no       |                                           |
+| `nutanix-vm-cpu-passthrough` | Enable passthrough the host's CPU features to the newly created VM                               | no       | false                                     |
+| `nutanix-vm-serial-port`     | Attach a serial port to the newly created VM                                                     | no       | false                                     |
+| `nutanix-vm-description`     | The description of the newly created VM                                                          | no       | VM created by Nutanix Rancher Node Driver |
 
 
 
@@ -108,8 +109,17 @@ Starting `v3.3.0` the Rancher Node driver implements Nutanix Project support. Th
 
 ## Service Accounts support
 
-Starting `v3.8.0` the Rancher Node Driver support Prism Central Service Accounts. 
+Starting `v3.9.0` the Rancher Node Driver support Prism Central Service Accounts. 
 To use a Service Account, you need to provide `X-ntnx-api-key` as the user name and the corresponding API Key as the password.
+
+## GPU support
+
+The Rancher Node Driver supports attaching GPU devices to VMs. To use GPUs:
+- Specify GPU devices by their name using the `nutanix-vm-gpu` parameter
+- Multiple GPUs can be attached by specifying the parameter multiple times
+- Only UNUSED GPUs from the target Prism Element cluster will be selected
+- GPU names must match exactly with the GPU names available in the cluster
+- The driver will search for available GPUs across all hosts in the specified cluster
 
 ## Development
 
