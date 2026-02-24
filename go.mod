@@ -7,8 +7,8 @@ replace github.com/docker/docker => github.com/docker/engine v17.12.0-ce-rc1.0.2
 require (
 	github.com/docker/machine v0.16.2
 	github.com/google/uuid v1.6.0
-	github.com/nutanix-cloud-native/prism-go-client v0.5.5
-	github.com/sirupsen/logrus v1.9.3
+	github.com/nutanix-cloud-native/prism-go-client v0.7.0
+	github.com/sirupsen/logrus v1.9.4
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -18,7 +18,7 @@ require (
 	github.com/PaesslerAG/jsonpath v0.1.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/docker/docker v20.10.17+incompatible // indirect
-	github.com/go-logr/logr v1.4.1 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
 	github.com/go-openapi/errors v0.22.0 // indirect
@@ -43,4 +43,5 @@ require (
 	golang.org/x/term v0.37.0 // indirect
 	google.golang.org/genproto v0.0.0-20200711021454-869866162049 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
