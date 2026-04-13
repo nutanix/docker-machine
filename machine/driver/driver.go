@@ -175,7 +175,7 @@ func (d *NutanixDriver) Create() error {
 	foundClusters := make([]*v3.ClusterIntentResponse, 0)
 	for _, s := range clusters.Entities {
 		peSpec := s.Spec
-		if *peSpec.Name == d.Cluster {
+		if peSpec.Name == d.Cluster {
 			foundClusters = append(foundClusters, s)
 		}
 	}
@@ -186,7 +186,7 @@ func (d *NutanixDriver) Create() error {
 		return fmt.Errorf("more than one Cluster found with name %s", d.Cluster)
 	}
 
-	log.Infof("Cluster %s found with UUID: %s", *foundClusters[0].Status.Name, *foundClusters[0].Metadata.UUID)
+	log.Infof("Cluster %s found with UUID: %s", foundClusters[0].Status.Name, *foundClusters[0].Metadata.UUID)
 	spec.ClusterReference = utils.BuildReference(*foundClusters[0].Metadata.UUID, "cluster")
 
 	// Search target subnet
