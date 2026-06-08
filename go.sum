@@ -100,8 +100,8 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
-github.com/nutanix-cloud-native/prism-go-client v0.7.2 h1:iJJYBiim1KnzQwSIv9JFr74qNnyy3u/2gtihVR14HOo=
-github.com/nutanix-cloud-native/prism-go-client v0.7.2/go.mod h1:vsSt2UviUrayZXh0yubhtL++LJ+LHvr7sREw9aG0STw=
+github.com/nutanix-cloud-native/prism-go-client v0.7.3 h1:VDeeXg/ntqtruQC4ZEESqxfDCSEEY7N0JtR4kNq/WRk=
+github.com/nutanix-cloud-native/prism-go-client v0.7.3/go.mod h1:vsSt2UviUrayZXh0yubhtL++LJ+LHvr7sREw9aG0STw=
 github.com/oklog/ulid v1.3.1 h1:EGfNDEx6MqHz8B3uNV6QAib1UR2Lm97sHi3ocA6ESJ4=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
