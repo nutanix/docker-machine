@@ -1,14 +1,14 @@
 module github.com/nutanix/docker-machine
 
-go 1.25.0
+go 1.26.0
 
 replace github.com/docker/docker => github.com/docker/engine v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 
 require (
 	github.com/docker/machine v0.16.2
 	github.com/google/uuid v1.6.0
-	github.com/nutanix-cloud-native/prism-go-client v0.7.3
-	github.com/sirupsen/logrus v1.9.4
+	github.com/nutanix-cloud-native/prism-go-client v0.8.1
+	github.com/sirupsen/logrus v1.10.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
